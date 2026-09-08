@@ -204,13 +204,21 @@ flowchart LR
 
 ## 8. Escopo e Limitações
 
-- **LIM-01** — O sistema não realiza atuação de corte de energia ou controle direto de maquinário industrial além do acionamento simples do relé (sem integração com CLP ou sistemas de parada industrial).
-- **LIM-02** — O sistema detecta mudança de padrão em relação a uma linha de base conhecida (normal/anômalo); não realiza prognóstico de prazo exato até a falha.
-- **LIM-03** — *[Aguardando teste]* O sistema não garante a integridade da classificação de anomalia para rotações do equipamento acima da faixa validada em bancada, uma vez que o sensor inercial apresenta degradação conhecida de captação de vibração em rotações muito altas. A faixa de teste do projeto foi ajustada a essa limitação do componente.
-- **LIM-04** — O sistema realiza classificação pontual de janelas de dados (normal/anômala) com base em um modelo treinado contra assinaturas de degradação precoce conhecidas — padrões de vibração e ruído distintos do funcionamento normal, não a falha catastrófica em si. O sistema não rastreia a evolução do padrão ao longo do tempo a partir de uma linha de base própria do equipamento monitorado, apenas reconhece anomalias já caracterizadas no treinamento. A detecção de deriva de longo prazo (semanas) está fora do escopo desta PoC por exigir dados longitudinais de degradação real, incompatíveis com o prazo de desenvolvimento disponível.
-- **LIM-05** — A comunicação via MQTT nesta PoC não implementa um mecanismo de criptografia (TLS/MQTTS), operando em rede local controlada de teste. A adoção de um canal seguro de comunicação é necessária para um cenário de implantação industrial real, mas foi considerada fora do escopo desta prova de conceito.
-- **LIM-06** — O mecanismo de reconciliação após reconexão não garante deduplicação no lado do consumidor (painel); em cenários de falha parcial de rede durante o reenvio, uma mensagem pode eventualmente ser recebida mais de uma vez. Tratamento de idempotência é considerado fora do escopo desta PoC.
+### Escopo (o que está incluído nesta PoC)
+
+- Monitoramento de um único equipamento rotativo por vez, em um ponto de medição controlado (motor/rolamento simulado em bancada).
+- Detecção de mudança de padrão vibracional e acústico frente a assinaturas de degradação já conhecidas, via modelo de IA embarcado.
+- Resposta local imediata (relé + buzzer), independente de conectividade.
+- Publicação de eventos via MQTT em rede local controlada de teste, com registro local (RTC + MicroSD) e reenvio automático ao reconectar.
+- Validação restrita a uma faixa de rotação e condições ambientais definidas em bancada (15°C–40°C).
+
+### Limitações
+
+- **LIM-01** — Sem controle de maquinário além do acionamento simples do relé (sem integração com CLP).
+- **LIM-02** — Detecta mudança de padrão em relação a uma linha de base conhecida; não estima prazo exato até a falha.
+- **LIM-03** *[Aguardando teste]* — Integridade da classificação garantida apenas dentro da faixa de rotação validada em bancada.
+- **LIM-04** — Classificação pontual contra assinaturas de degradação já conhecidas; não rastreia a evolução do padrão do próprio equipamento ao longo do tempo (deriva de longo prazo fora do escopo).
+- **LIM-05** — MQTT sem criptografia (TLS/MQTTS); opera em rede local controlada de teste.
+- **LIM-06** — Sem garantia de deduplicação no consumidor em caso de falha parcial durante o reenvio após reconexão.
 
 A especificação completa de requisitos (RF, RNF e LIM) está detalhada no artefato da Entrega 1.
-
----
