@@ -183,22 +183,33 @@ flowchart LR
 
 ## 7. Estrutura do Repositório
 
-> Precisa corresponder exatamente aos tópicos deste README (exigência da Entrega 4, nível Avançado) — os caminhos citados abaixo devem existir de verdade no repositório.
-
 ```
 /
 ├── README.md
-├── CONTRIBUTING.md   # Diretrizes de contribuição para o repositório
-├── /firmware        # [PREENCHER]
-├── /hardware         # [PREENCHER]
-├── /docs
-│   ├── /diagramas    # [PREENCHER]
-│   └── /requisitos   # [PREENCHER]
-├── /scripts          # [PREENCHER]
-└── /data             # [PREENCHER]
+├── CONTRIBUTING.md
+├── .gitignore
+├── LICENSE
+├── firmware/
+│   ├── CMakeLists.txt
+│   ├── components/
+│   │   ├── edge-impulse-sdk/       (gerado — gitignored)
+│   │   ├── model-parameters/       (gerado — gitignored)
+│   │   ├── tflite-model/           (gerado — gitignored)
+│   │   ├── sensor_bno085/
+│   │   ├── sensor_ky038/
+│   │   ├── actuator_relay/
+│   │   ├── actuator_buzzer/
+│   │   ├── storage_datalogger/
+│   │   └── connectivity_mqtt/
+│   └── main/
+│       ├── main.c
+│       ├── task_aquisicao.c
+│       ├── task_inferencia.c
+│       └── task_rede.c
+├── dashboard/
+│   └── flow_nodered.json
+└── docs/                           (artefatos entregues)
 ```
-
-*[PREENCHER: ajustar conforme a estrutura real do projeto for se consolidando]*
 
 ---
 

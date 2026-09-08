@@ -10,6 +10,11 @@ sdkconfig.old
 managed_components/
 dependencies.lock
 
+# Edge Impulse SDK export (regenerado a partir do projeto no Edge Impulse Studio)
+components/edge-impulse-sdk/
+components/model-parameters/
+components/tflite-model/
+
 # Editor / IDE
 .vscode/
 .idea/
