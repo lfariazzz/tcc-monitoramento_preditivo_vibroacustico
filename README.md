@@ -102,12 +102,17 @@ flowchart LR
 
 | Item | Uso | Versão |
 |---|---|---|
-| [PREENCHER] | [PREENCHER] | [PREENCHER] |
-| [PREENCHER] | [PREENCHER] | [PREENCHER] |
-| [PREENCHER] | [PREENCHER] | [PREENCHER] |
+| ESP-IDF | Framework de desenvolvimento (FreeRTOS, drivers nativos, MQTT, Wi-Fi) | v5.5.5 |
+| `rinku404/bno085` | Driver do BNO085 (protocolo SH-2), via ESP-IDF Component Manager | ^1.2.0 |
+| `esp-idf-lib/ads111x` | Driver do ADS1115 em modo de conversão contínua, via ESP-IDF Component Manager | 1.1.14 |
+| `esp-idf-lib/ds3231` | Driver do RTC DS3231 (módulo HW-084), via ESP-IDF Component Manager | 1.1.7 |
+| `esp-idf-lib/i2cdev` | Dependência compartilhada do `ads111x` e do `ds3231` — utilitário thread-safe de acesso I2C | (resolvida automaticamente) |
+| Edge Impulse SDK | Modelo de inferência exportado (classificação normal/anômalo) | — |
+| `esp-mqtt` (nativo ESP-IDF) | Cliente MQTT para publicação de eventos | nativo |
+| `esp_wifi` (nativo ESP-IDF) | Conectividade Wi-Fi | nativo |
+| `esp_vfs_fat` + driver SD/SPI (nativo ESP-IDF) | Armazenamento local (MicroSD, FATFS) | nativo |
 
 ---
-
 ## 4. Pré-requisitos e Recursos Necessários
 
 > Elemento previsto na anatomia do README (pergunta estrutural "o que eu preciso ter antes de começar?"), aplicável desde esta entrega — a Entrega 6 exige que essas informações estejam completas e sem ambiguidade, não que a seção só passe a existir ali.

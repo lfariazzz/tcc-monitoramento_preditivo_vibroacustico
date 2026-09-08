@@ -21,3 +21,5 @@ components/tflite-model/
 
 # OS cruft
 .DS_Store
+
+.vscode
