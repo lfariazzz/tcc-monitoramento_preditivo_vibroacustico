@@ -1,19 +1,14 @@
-<!--
-MOLDE MESTRE DO README — Wayne Enterprises / PNAAT 2026
-Este arquivo já nasce estruturado para atender, ao mesmo tempo:
-  - Entrega 4 (Documentação 1): sumário, diagrama de blocos preliminar, lista de dependências,
-    organização de pastas correspondente aos tópicos, passos iniciais de instalação.
-  - Entrega 6 (Documentação final): manual completo de replicação por terceiros — pré-requisitos,
-    dependências/instalação, configuração, montagem elétrica, execução, resultado esperado.
-Cada seção tem um marcador [PREENCHER] indicando o que falta. Não apague seções vazias —
-elas contam como "estrutura prevista" para a Entrega 4 mesmo antes de estarem completas.
--->
+# Monitoramento Preditivo Vibroacústico com Edge AI
 
-# [Nome do Projeto] — Wayne Enterprises
+> Detectar a degradação de equipamentos rotativos antes da falha, direto na borda, lendo o que a vibração e o ruído já denunciam antes que um humano perceba.
 
-> [PREENCHER: uma frase de efeito — o que o sistema faz e por quê, em 1 linha]
+Trabalho de Conclusão do Intensivo Maker (PNAAT 2026), Solução de IoT com inferência embarcada (Edge AI): monitoramento contínuo de vibração e ruído harmônico de um equipamento rotativo, classificação local normal/anômalo e resposta local + remota via MQTT.
 
-[PREENCHER: parágrafo curto de contexto — programa, módulo, e uma linha geral sobre o tipo de solução (IoT / visão computacional / integração)]
+Desenvolvido pela equipe **Wayne Enterprises:**
+- André Wesley Barbosa Rodrigues Filho
+- Guilherme Venâncio de Souza
+- Pedro Yan Alcantara Palacios
+- Levi Farias Leite
 
 > 📋 Organizamos nosso fluxo de contribuição, padrões de commit e boas práticas do repositório em [CONTRIBUTING.md](./CONTRIBUTING.md), e o andamento das tarefas no nosso ([Project Kanban](https://github.com/users/lfariazzz/projects/5/views/1)).
 
@@ -25,73 +20,62 @@ elas contam como "estrutura prevista" para a Entrega 4 mesmo antes de estarem co
 2. [Arquitetura — Diagrama de Blocos](#2-arquitetura--diagrama-de-blocos)
 3. [Requisitos e Dependências](#3-requisitos-e-dependências)
 4. [Pré-requisitos e Recursos Necessários](#4-pré-requisitos-e-recursos-necessários)
-5. [Instalação e Configuração](#5-instalação-e-configuração)
+5. [Instalação, Configuração e Execução](#5-instalação-configuração-e-execução)
 6. [Instruções de Montagem (Hardware)](#6-instruções-de-montagem-hardware)
-7. [Como Executar](#7-como-executar)
-8. [Resultado Esperado / Evidência de Execução](#8-resultado-esperado--evidência-de-execução)
-9. [Estrutura do Repositório](#9-estrutura-do-repositório)
-10. [Escopo e Limitações](#10-escopo-e-limitações)
-11. [Equipe](#11-equipe)
+7. [Estrutura do Repositório](#7-estrutura-do-repositório)
+8. [Escopo e Limitações](#8-escopo-e-limitações)
 
 ---
 
 ## 1. Visão Geral do Problema e da Solução
 
-**Problema (a "dor"):** [PREENCHER — situação tratada, necessidade identificada, por que a solução atual/inexistente é insuficiente]
+**O problema:** Em manufatura pesada, equipamentos rotativos de alta exigência (motores elétricos, rolamentos de trefilas) sofrem desgaste progressivo — desbalanceamento, desalinhamento, perda de lubrificação — que altera sutilmente sua vibração e ruído harmônico semanas antes de uma falha catastrófica, de forma imperceptível aos sentidos humanos. Isso mantém a manutenção presa entre dois extremos: agir só depois da quebra (reativo) ou trocar peças por calendário sem necessidade real (preventivo cego), ambos gerando paradas não programadas e custos altos.
 
-**Solução proposta:** [PREENCHER — resumo de 3-5 linhas de como o sistema resolve isso]
-
-**Resultado pretendido:** [PREENCHER — o que conta como sucesso, de forma mensurável]
-
-**Limites da solução (o que o sistema NÃO faz):** [PREENCHER]
+**A solução:** Este projeto propõe um nó de borda (ESP32-S3) que monitora continuamente a vibração e o ruído do equipamento, extrai características do sinal e classifica o padrão como normal ou anômalo com um modelo de IA embarcado, decidindo localmente e sem depender de rede. Ao detectar uma anomalia, o sistema aciona uma resposta local imediata (alerta e corte de energia via relé) e publica o evento remotamente via MQTT, mantendo registro local com timestamp mesmo offline. O escopo desta PoC — o que fica de fora e por quê — está detalhado na seção 8 (Escopo e Limitações).
 
 ---
-
 ## 2. Arquitetura — Diagrama de Blocos
-
-> Diagrama preliminar. Deve representar, no mínimo: elementos de **sensoriamento**, **processamento**, **conectividade** e **software**, e a relação/fluxo entre eles (exigência da Entrega 4 para soluções de IoT). Para soluções de visão computacional, adaptar para entrada, processamento, resultado e recursos utilizados.
 
 ```mermaid
 flowchart LR
-    subgraph SENSORIAMENTO
-        S1[Sensor 1]
-        S2[Sensor 2]
-    end
+    EQ["Equipamento monitorado<br/>Cooler CoolCox (simulador)"]
+    BNO["BNO085<br/>Vibração (I2C)"]
+    FC1["FC-22 (D0)<br/>Pico sonoro (ISR)"]
+    FC2["FC-22 + ADS1115<br/>Sinal fino (I2C)"]
+    ESP["ESP32-S3<br/>RTOS + Edge AI embarcado"]
+    BUZ["Buzzer<br/>Alerta sonoro"]
+    REL["Relé 1 canal<br/>Corte de energia"]
+    RTC["RTC + MicroSD<br/>Timestamp local"]
+    MQTT["Broker MQTT<br/>HiveMQ"]
+    DASH["Dashboard Node-RED<br/>Status em tempo real"]
 
-    subgraph PROCESSAMENTO
-        P1[Módulo auxiliar de processamento]
-        MCU[Controlador principal]
-    end
+    EQ --> BNO
+    EQ --> FC1
+    EQ --> FC2
+    BNO --> ESP
+    FC1 --> ESP
+    FC2 --> ESP
+    ESP --> BUZ
+    ESP --> REL
+    ESP --> RTC
+    ESP --> MQTT
+    RTC -. "Reenvio ao reconectar" .-> MQTT
+    MQTT --> DASH
 
-    subgraph ATUACAO["ATUAÇÃO / SAÍDA LOCAL"]
-        A1[Atuador 1]
-        A2[Atuador 2]
-    end
+    classDef sensor fill:#E1F5EE,stroke:#0F6E56,color:#04342C
+    classDef proc fill:#EEEDFE,stroke:#534AB7,color:#26215C
+    classDef atuacao fill:#FAECE7,stroke:#993C1D,color:#4A1B0C
+    classDef rede fill:#E6F1FB,stroke:#185FA5,color:#042C53
+    classDef neutro fill:#F1EFE8,stroke:#5F5E5A,color:#2C2C2A
 
-    subgraph ARMAZENAMENTO
-        R1[Módulo de tempo real]
-        R2[Armazenamento local]
-    end
-
-    subgraph CONECTIVIDADE
-        C1[Rede]
-        C2[Broker / Protocolo]
-    end
-
-    subgraph SOFTWARE
-        D1[Painel / Dashboard]
-    end
-
-    S1 --> MCU
-    S2 --> P1 --> MCU
-    MCU --> A1
-    MCU --> A2
-    MCU --> R1
-    MCU --> R2
-    MCU --> C1 --> C2 --> D1
+    class BNO,FC1,FC2 sensor
+    class ESP proc
+    class BUZ,REL atuacao
+    class RTC neutro
+    class MQTT,DASH rede
 ```
 
-*[PREENCHER: substituir os rótulos genéricos pelos elementos reais da arquitetura definida]*
+> O corte de energia do relé sobre o equipamento monitorado e refinamentos futuros do dashboard (histórico gráfico, múltiplos dashboards) não são representados graficamente aqui; ficam descritos em texto para não sobrecarregar o diagrama.
 
 ---
 
@@ -101,11 +85,18 @@ flowchart LR
 
 ### 3.1 Hardware
 
-| Componente | Função no sistema | Status |
+| Componente | Função na arquitetura | RF relacionado |
 |---|---|---|
-| [PREENCHER] | [PREENCHER] | [PREENCHER] |
-| [PREENCHER] | [PREENCHER] | [PREENCHER] |
-| [PREENCHER] | [PREENCHER] | [PREENCHER] |
+| ESP32-S3 (Heltec WiFi LoRa 32 V3) | Roda o RTOS, lê os sensores e decide se há anomalia | RF-04, RF-05 |
+| BNO085 (IMU) | Captura a assinatura de vibração do equipamento monitorado | RF-01 |
+| FC-22 (sensor de som) | Captura o ruído harmônico do desgaste, em duas camadas (pico via interrupção + sinal fino via ADC) | RF-02, RF-03 |
+| ADS1115 | Melhora a resolução da leitura analógica do FC-22 | RF-02 |
+| Cooler CoolCox (PWM) | Motor de teste sob monitoramento (simula o equipamento rotativo) | — |
+| Relé 1 canal | Aciona resposta física à anomalia (corte de energia) | RF-07 |
+| Buzzer | Alarme sonoro local imediato | RF-06 |
+| Módulo RTC + MicroSD | Registra eventos com timestamp real | RF-09, RF-10 |
+
+
 
 ### 3.2 Software / Bibliotecas / Plataformas
 
@@ -119,7 +110,8 @@ flowchart LR
 
 ## 4. Pré-requisitos e Recursos Necessários
 
-> Seção exigida na Entrega 6 — tudo que uma pessoa de fora precisa **ter em mãos** antes de começar.
+> Elemento previsto na anatomia do README (pergunta estrutural "o que eu preciso ter antes de começar?"), aplicável desde esta entrega — a Entrega 6 exige que essas informações estejam completas e sem ambiguidade, não que a seção só passe a existir ali.
+
 
 - [ ] [PREENCHER — hardware físico necessário]
 - [ ] [PREENCHER — software instalado na máquina de desenvolvimento]
@@ -128,7 +120,7 @@ flowchart LR
 
 ---
 
-## 5. Instalação e Configuração
+## 5. Instalação, Configuração e Execução
 
 > Os passos aqui devem corresponder exatamente às dependências listadas na Seção 3 (exigência da Entrega 4) e serem completos o suficiente para reprodução sem ambiguidade (exigência da Entrega 6).
 
@@ -147,7 +139,20 @@ flowchart LR
 [PREENCHER]
 ```
 
-### 5.4 Configuração adicional (modelo, integrações, etc.)
+### 5.4 Como executar
+
+> Comandos ou procedimentos exatos para rodar o projeto do zero.
+
+```bash
+[PREENCHER: comando de build]
+[PREENCHER: comando de flash/upload]
+[PREENCHER: comando de monitoramento, se aplicável]
+```
+
+[PREENCHER: se houver dashboard/painel externo, como acessá-lo]
+
+
+### 5.5 Configuração adicional (modelo, integrações, etc.)
 ```
 [PREENCHER]
 ```
@@ -176,35 +181,7 @@ flowchart LR
 
 ---
 
-## 7. Como Executar
-
-> Comandos ou procedimentos exatos para rodar o projeto do zero (exigência da Entrega 6).
-
-```bash
-[PREENCHER: comando de build]
-[PREENCHER: comando de flash/upload]
-[PREENCHER: comando de monitoramento, se aplicável]
-```
-
-[PREENCHER: se houver dashboard/painel externo, como acessá-lo]
-
----
-
-## 8. Resultado Esperado / Evidência de Execução
-
-> Exigência explícita da Entrega 6: "o resultado que permite confirmar a execução".
-
-Ao executar corretamente, espera-se observar:
-
-- [PREENCHER]
-- [PREENCHER]
-- [PREENCHER]
-
-*[PREENCHER: incluir print de tela, trecho de log ou GIF curto quando disponível]*
-
----
-
-## 9. Estrutura do Repositório
+## 7. Estrutura do Repositório
 
 > Precisa corresponder exatamente aos tópicos deste README (exigência da Entrega 4, nível Avançado) — os caminhos citados abaixo devem existir de verdade no repositório.
 
@@ -225,29 +202,15 @@ Ao executar corretamente, espera-se observar:
 
 ---
 
-## 10. Escopo e Limitações
+## 8. Escopo e Limitações
 
-**Dentro do escopo:**
-- [PREENCHER]
+- **LIM-01** — O sistema não realiza atuação de corte de energia ou controle direto de maquinário industrial além do acionamento simples do relé (sem integração com CLP ou sistemas de parada industrial).
+- **LIM-02** — O sistema detecta mudança de padrão em relação a uma linha de base conhecida (normal/anômalo); não realiza prognóstico de prazo exato até a falha.
+- **LIM-03** — *[Aguardando teste]* O sistema não garante a integridade da classificação de anomalia para rotações do equipamento acima da faixa validada em bancada, uma vez que o sensor inercial apresenta degradação conhecida de captação de vibração em rotações muito altas. A faixa de teste do projeto foi ajustada a essa limitação do componente.
+- **LIM-04** — O sistema realiza classificação pontual de janelas de dados (normal/anômala) com base em um modelo treinado contra assinaturas de degradação precoce conhecidas — padrões de vibração e ruído distintos do funcionamento normal, não a falha catastrófica em si. O sistema não rastreia a evolução do padrão ao longo do tempo a partir de uma linha de base própria do equipamento monitorado, apenas reconhece anomalias já caracterizadas no treinamento. A detecção de deriva de longo prazo (semanas) está fora do escopo desta PoC por exigir dados longitudinais de degradação real, incompatíveis com o prazo de desenvolvimento disponível.
+- **LIM-05** — A comunicação via MQTT nesta PoC não implementa um mecanismo de criptografia (TLS/MQTTS), operando em rede local controlada de teste. A adoção de um canal seguro de comunicação é necessária para um cenário de implantação industrial real, mas foi considerada fora do escopo desta prova de conceito.
+- **LIM-06** — O mecanismo de reconciliação após reconexão não garante deduplicação no lado do consumidor (painel); em cenários de falha parcial de rede durante o reenvio, uma mensagem pode eventualmente ser recebida mais de uma vez. Tratamento de idempotência é considerado fora do escopo desta PoC.
 
-**Fora do escopo (decisão deliberada, não limitação técnica):**
-- [PREENCHER]
-
----
-
-## 11. Equipe
-
-**Wayne Enterprises**
-
-| Nome | Papel no projeto |
-|---|---|
-| [PREENCHER] | [PREENCHER] |
-| [PREENCHER] | [PREENCHER] |
-| [PREENCHER] | [PREENCHER] |
-| [PREENCHER] | [PREENCHER] |
-
-Programa: PNAAT 2026 — Fase 2 (Intensivo Maker), Módulo de Trabalho de Conclusão da Capacitação.
+A especificação completa de requisitos (RF, RNF e LIM) está detalhada no artefato da Entrega 1.
 
 ---
-
-Para diretrizes de como contribuir com este repositório, consulte o [CONTRIBUTING.md](./CONTRIBUTING.md).
