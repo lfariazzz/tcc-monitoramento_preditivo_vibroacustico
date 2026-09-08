@@ -40,8 +40,8 @@ Desenvolvido pela equipe **Wayne Enterprises:**
 flowchart LR
     EQ["Equipamento monitorado<br/>Cooler CoolCox (simulador)"]
     BNO["BNO085<br/>Vibração (I2C)"]
-    FC1["FC-22 (D0)<br/>Pico sonoro (ISR)"]
-    FC2["FC-22 + ADS1115<br/>Sinal fino (I2C)"]
+    FC1["KY-038 (D0)<br/>Pico sonoro (ISR)"]
+    FC2["KY-038 + ADS1115<br/>Sinal fino (I2C)"]
     ESP["ESP32-S3<br/>RTOS + Edge AI embarcado"]
     BUZ["Buzzer<br/>Alerta sonoro"]
     REL["Relé 1 canal<br/>Corte de energia"]
@@ -89,8 +89,8 @@ flowchart LR
 |---|---|---|
 | ESP32-S3 (Heltec WiFi LoRa 32 V3) | Roda o RTOS, lê os sensores e decide se há anomalia | RF-04, RF-05 |
 | BNO085 (IMU) | Captura a assinatura de vibração do equipamento monitorado | RF-01 |
-| FC-22 (sensor de som) | Captura o ruído harmônico do desgaste, em duas camadas (pico via interrupção + sinal fino via ADC) | RF-02, RF-03 |
-| ADS1115 | Melhora a resolução da leitura analógica do FC-22 | RF-02 |
+| KY-038 (sensor de som) | Captura o ruído harmônico do desgaste, em duas camadas (pico via interrupção + sinal fino via ADC) | RF-02, RF-03 |
+| ADS1115 | Melhora a resolução da leitura analógica do KY-038 | RF-02 |
 | Cooler CoolCox (PWM) | Motor de teste sob monitoramento (simula o equipamento rotativo) | — |
 | Relé 1 canal | Aciona resposta física à anomalia (corte de energia) | RF-07 |
 | Buzzer | Alarme sonoro local imediato | RF-06 |
