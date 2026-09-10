@@ -2,7 +2,7 @@
 
 > Detectar a degradação de equipamentos rotativos antes da falha, direto na borda, lendo o que a vibração e o ruído já denunciam antes que um humano perceba.
 
-Trabalho de Conclusão do Intensivo Maker (PNAAT 2026), Solução de IoT com inferência embarcada (Edge AI): monitoramento contínuo de vibração e ruído harmônico de um equipamento rotativo, classificação local normal/anômalo e resposta local + remota via MQTT.
+Trabalho de Conclusão do Intensivo Maker (PNAAT 2026), Solução de IoT com inferência embarcada (Edge AI): monitoramento contínuo de vibração e ruído harmônico de um equipamento rotativo, classificação local em três níveis de severidade e resposta local + remota via MQTT.
 
 Desenvolvido pela equipe **Wayne Enterprises:**
 - André Wesley Barbosa Rodrigues Filho
@@ -31,20 +31,21 @@ Desenvolvido pela equipe **Wayne Enterprises:**
 
 **O problema:** Em manufatura pesada, equipamentos rotativos de alta exigência (motores elétricos, rolamentos de trefilas) sofrem desgaste progressivo — desbalanceamento, desalinhamento, perda de lubrificação — que altera sutilmente sua vibração e ruído harmônico semanas antes de uma falha catastrófica, de forma imperceptível aos sentidos humanos. Isso mantém a manutenção presa entre dois extremos: agir só depois da quebra (reativo) ou trocar peças por calendário sem necessidade real (preventivo cego), ambos gerando paradas não programadas e custos altos.
 
-**A solução:** Este projeto propõe um nó de borda (ESP32-S3) que monitora continuamente a vibração e o ruído do equipamento, extrai características do sinal e classifica o padrão como normal ou anômalo com um modelo de IA embarcado, decidindo localmente e sem depender de rede. Ao detectar uma anomalia, o sistema aciona uma resposta local imediata (alerta e corte de energia via relé) e publica o evento remotamente via MQTT, mantendo registro local com timestamp mesmo offline. O escopo desta PoC — o que fica de fora e por quê — está detalhado na seção 8 (Escopo e Limitações).
+**A solução:** Este projeto propõe um nó de borda (ESP32-S3) que monitora continuamente a vibração e o ruído do equipamento, extrai características do sinal e classifica o padrão em três níveis de severidade (normal, leve, severa) com um modelo de IA embarcado, decidindo localmente e sem depender de rede. Ao detectar uma anomalia, o sistema aciona um alerta local imediato (buzzer + LED RGB indicando o nível de severidade) e, em caso de anomalia severa persistente, interrompe a energia do equipamento via relé; o evento também é publicado remotamente via MQTT, mantendo registro local com timestamp mesmo offline. O escopo desta PoC — o que fica de fora e por quê — está detalhado na seção 8 (Escopo e Limitações).
 
 ---
 ## 2. Arquitetura — Diagrama de Blocos
 
 ```mermaid
 flowchart LR
-    EQ["Equipamento monitorado<br/>Cooler CoolCox (simulador)"]
+    EQ["Equipamento monitorado<br/>Cooler genérico (USB)"]
     BNO["BNO085<br/>Vibração (I2C)"]
     FC1["KY-038 (D0)<br/>Pico sonoro (ISR)"]
     FC2["KY-038 + ADS1115<br/>Sinal fino (I2C)"]
     ESP["ESP32-S3<br/>RTOS + Edge AI embarcado"]
-    BUZ["Buzzer<br/>Alerta sonoro"]
-    REL["Relé 1 canal<br/>Corte de energia"]
+    BUZ["Buzzer<br/>Alerta (qualquer anomalia)"]
+    LED["LED RGB<br/>Indicador de severidade"]
+    REL["Relé 1 canal<br/>Corte (anomalia severa)"]
     RTC["RTC + MicroSD<br/>Timestamp local"]
     MQTT["Broker MQTT<br/>HiveMQ"]
     DASH["Dashboard Node-RED<br/>Status em tempo real"]
@@ -56,6 +57,7 @@ flowchart LR
     FC1 --> ESP
     FC2 --> ESP
     ESP --> BUZ
+    ESP --> LED
     ESP --> REL
     ESP --> RTC
     ESP --> MQTT
@@ -70,7 +72,7 @@ flowchart LR
 
     class BNO,FC1,FC2 sensor
     class ESP proc
-    class BUZ,REL atuacao
+    class BUZ,LED,REL atuacao
     class RTC neutro
     class MQTT,DASH rede
 ```
@@ -78,6 +80,7 @@ flowchart LR
 > O corte de energia do relé sobre o equipamento monitorado e refinamentos futuros do dashboard (histórico gráfico, múltiplos dashboards) não são representados graficamente aqui; ficam descritos em texto para não sobrecarregar o diagrama.
 
 ---
+
 
 ## 3. Requisitos e Dependências
 
@@ -91,12 +94,11 @@ flowchart LR
 | BNO085 (IMU) | Captura a assinatura de vibração do equipamento monitorado | RF-01 |
 | KY-038 (sensor de som) | Captura o ruído harmônico do desgaste, em duas camadas (pico via interrupção + sinal fino via ADC) | RF-02, RF-03 |
 | ADS1115 | Melhora a resolução da leitura analógica do KY-038 | RF-02 |
-| Cooler CoolCox (PWM) | Motor de teste sob monitoramento (simula o equipamento rotativo) | — |
-| Relé 1 canal | Aciona resposta física à anomalia (corte de energia) | RF-07 |
-| Buzzer | Alarme sonoro local imediato | RF-06 |
-| Módulo RTC + MicroSD | Registra eventos com timestamp real | RF-09, RF-10 |
-
-
+| Cooler genérico (USB) | Motor de teste sob monitoramento (simula o equipamento rotativo) | — |
+| Relé 1 canal | Interrompe a energia em anomalia severa | RF-08 |
+| LED RGB | Indica visualmente o nível de severidade (normal/leve/severa) | RF-07 |
+| Buzzer | Alarme sonoro local imediato (qualquer anomalia) | RF-06 |
+| Módulo RTC + MicroSD | Registra eventos com timestamp real | RF-10, RF-11 |
 
 ### 3.2 Software / Bibliotecas / Plataformas
 
@@ -204,6 +206,7 @@ flowchart LR
 │   │   ├── sensor_ky038/
 │   │   ├── actuator_relay/
 │   │   ├── actuator_buzzer/
+│   │   ├── actuator_led_rgb/
 │   │   ├── storage_datalogger/
 │   │   └── connectivity_mqtt/
 │   └── main/
@@ -223,16 +226,16 @@ flowchart LR
 ### Escopo (o que está incluído nesta PoC)
 
 - Monitoramento de um único equipamento rotativo por vez, em um ponto de medição controlado (motor/rolamento simulado em bancada).
-- Detecção de mudança de padrão vibracional e acústico frente a assinaturas de degradação já conhecidas, via modelo de IA embarcado.
-- Resposta local imediata (relé + buzzer), independente de conectividade.
+- Classificação em três níveis de severidade (normal, anomalia leve, anomalia severa) via modelo de IA embarcado, com indicação visual por LED RGB.
+- Alerta sonoro local imediato para qualquer nível de anomalia; corte de energia via relé restrito a anomalia severa persistente.
 - Publicação de eventos via MQTT em rede local controlada de teste, com registro local (RTC + MicroSD) e reenvio automático ao reconectar.
 - Validação restrita a uma faixa de rotação e condições ambientais definidas em bancada (15°C–40°C).
 
 ### Limitações
 
-- **LIM-01** — Sem controle de maquinário além do acionamento simples do relé (sem integração com CLP).
-- **LIM-02** — Detecta mudança de padrão em relação a uma linha de base conhecida; não estima prazo exato até a falha.
-- **LIM-03** *[Aguardando teste]* — Integridade da classificação garantida apenas dentro da faixa de rotação validada em bancada.
+- **LIM-01** — Sem controle de maquinário além do acionamento simples do relé (sem integração com CLP ou sistemas de parada industrial); o corte ocorre por tempo decorrido de anomalia severa, sem verificar se o equipamento está em um ponto operacional seguro para interrupção (ex: fim de um ciclo de trabalho) — fora do escopo desta PoC, que usa um motor de teste sem ciclo de trabalho discreto.
+- **LIM-02** — Detecta mudança de padrão em relação a uma linha de base conhecida (normal/anomalia leve/anomalia severa); não estima prazo exato até a falha.
+- **LIM-03** — Integridade da classificação garantida apenas dentro da faixa de rotação validada em bancada.
 - **LIM-04** — Classificação pontual contra assinaturas de degradação já conhecidas; não rastreia a evolução do padrão do próprio equipamento ao longo do tempo (deriva de longo prazo fora do escopo).
 - **LIM-05** — MQTT sem criptografia (TLS/MQTTS); opera em rede local controlada de teste.
 - **LIM-06** — Sem garantia de deduplicação no consumidor em caso de falha parcial durante o reenvio após reconexão.
