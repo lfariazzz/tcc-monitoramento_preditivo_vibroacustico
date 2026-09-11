@@ -5,6 +5,7 @@ typedef enum {
     LED_SEVERIDADE_NORMAL = 0,  // verde
     LED_SEVERIDADE_LEVE,        // amarelo (vermelho + verde)
     LED_SEVERIDADE_SEVERA,      // vermelho
+    LED_PARADO,                 // desligado
 } led_severidade_t;
 
 /** Configura os 3 GPIOs do LED RGB como saída. */
