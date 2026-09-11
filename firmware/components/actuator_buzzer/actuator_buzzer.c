@@ -1,8 +1,7 @@
 #include "actuator_buzzer.h"
 #include "driver/gpio.h"
 
-// TODO: confirmar GPIO real com a equipe antes de fiar/testar
-#define BUZZER_GPIO  48
+#define BUZZER_GPIO  47
 
 esp_err_t actuator_buzzer_init(void)
 {

@@ -21,6 +21,10 @@ extern "C" const janela_dados_t* task_aquisicao_get_janela_pronta(void);
 // RNF-05: tempo de persistência de anomalia severa antes de acionar o relé
 #define TEMPO_PERSISTENCIA_SEVERA_MS   5000
 
+// Duração do beep breve para anomalia LEVE — depois disso, desliga sozinho
+// mesmo que a condição leve persista. SEVERA continua contínua (sem limite).
+#define DURACAO_BEEP_LEVE_MS   500
+
 // Detecção de "parado" via threshold simples — decisão de firmware,
 // não do modelo de IA (motor ligado/desligado é regra determinística,
 // não padrão de vibração a ser reconhecido por ML).
@@ -33,6 +37,9 @@ extern "C" const janela_dados_t* task_aquisicao_get_janela_pronta(void);
 static int64_t s_inicio_severa_us = 0;
 static bool s_em_severa = false;
 static bool s_rele_acionado = false;
+
+static int64_t s_inicio_beep_leve_us = 0;
+static bool s_beep_leve_ativo = false;
 
 // TODO: substituir por actuator_relay real quando esse componente existir (RF-08)
 static void actuator_relay_on(void)
@@ -81,6 +88,33 @@ static bool esta_parado(const janela_dados_t *janela)
     return desvio < LIMIAR_DESVIO_PARADO_MS2;
 }
 
+// Decide o comportamento do buzzer conforme a severidade:
+// - SEVERA: contínuo, sem desligar sozinho, enquanto a condição persistir.
+// - LEVE: um beep breve (DURACAO_BEEP_LEVE_MS) e desliga sozinho, mesmo que
+//         a condição leve continue nas próximas janelas.
+// - NORMAL/outros: desligado, e reseta o estado do beep breve.
+static void controlar_buzzer(led_severidade_t severidade)
+{
+    if (severidade == LED_SEVERIDADE_SEVERA) {
+        actuator_buzzer_on();
+        s_beep_leve_ativo = false;
+    } else if (severidade == LED_SEVERIDADE_LEVE) {
+        if (!s_beep_leve_ativo) {
+            actuator_buzzer_on();
+            s_inicio_beep_leve_us = esp_timer_get_time();
+            s_beep_leve_ativo = true;
+        } else {
+            int64_t duracao_ms = (esp_timer_get_time() - s_inicio_beep_leve_us) / 1000;
+            if (duracao_ms >= DURACAO_BEEP_LEVE_MS) {
+                actuator_buzzer_off();
+            }
+        }
+    } else {
+        actuator_buzzer_off();
+        s_beep_leve_ativo = false;
+    }
+}
+
 void task_inferencia(void *pvParameters)
 {
     actuator_buzzer_init();
@@ -100,6 +134,7 @@ void task_inferencia(void *pvParameters)
             ESP_LOGI(TAG, "Motor parado (desvio abaixo do limiar)");
             actuator_led_rgb_set(LED_PARADO);
             actuator_buzzer_off();
+            s_beep_leve_ativo = false;
             s_em_severa = false;
             s_rele_acionado = false;
             continue;
@@ -133,16 +168,18 @@ void task_inferencia(void *pvParameters)
 
         // ⚠️ Nomes de label ainda não confirmados byte a byte — ver nota abaixo
         led_severidade_t severidade;
-        bool anomalia = false;
 
         if (strcmp(melhor_label, "Normal") == 0) {
             severidade = LED_SEVERIDADE_NORMAL;
         } else if (strcmp(melhor_label, "Anomalia Leve") == 0) {
             severidade = LED_SEVERIDADE_LEVE;
-            anomalia = true;
         } else {
             severidade = LED_SEVERIDADE_SEVERA;
-            anomalia = true;
         }
 
         actuator_led_rgb_set(severidade);
+        controlar_buzzer(severidade);
+
+        avaliar_persistencia_severa(severidade == LED_SEVERIDADE_SEVERA);
+    }
+}

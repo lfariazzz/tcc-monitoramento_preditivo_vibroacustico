@@ -2,8 +2,8 @@
 #include "driver/gpio.h"
 
 #define LED_GPIO_R  42
-#define LED_GPIO_G  45
-#define LED_GPIO_B  46
+#define LED_GPIO_G  2
+#define LED_GPIO_B  3
 
 // Catodo comum confirmado por teste físico: nível ALTO acende cada cor.
 #define COR_ACESA   1
@@ -36,6 +36,11 @@ void actuator_led_rgb_set(led_severidade_t nivel)
             break;
         case LED_SEVERIDADE_SEVERA: // vermelho
             gpio_set_level(LED_GPIO_R, COR_ACESA);
+            gpio_set_level(LED_GPIO_G, COR_APAGADA);
+            gpio_set_level(LED_GPIO_B, COR_APAGADA);
+            break;
+        case LED_PARADO: // desligado
+            gpio_set_level(LED_GPIO_R, COR_APAGADA);
             gpio_set_level(LED_GPIO_G, COR_APAGADA);
             gpio_set_level(LED_GPIO_B, COR_APAGADA);
             break;
