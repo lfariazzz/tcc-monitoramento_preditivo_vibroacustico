@@ -26,7 +26,7 @@ void task_aquisicao(void *pvParameters)
     janela_dados_t *atual = &s_buffers[s_indice_escrita];
     atual->count = 0;
 
-    const TickType_t periodo = pdMS_TO_TICKS(10); // 100Hz, RNF-01
+    const TickType_t periodo = pdMS_TO_TICKS(100);
 
     for (;;) {
         sensor_bno085_poll();
