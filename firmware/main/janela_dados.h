@@ -3,9 +3,7 @@
 #include <stdint.h>
 #include <stddef.h>
 
-// PROVISÓRIO: 1s de janela a 100Hz. Ajustar quando a Task #12 (Edge Impulse)
-// definir o tamanho de janela real do modelo treinado.
-#define JANELA_N_AMOSTRAS 100
+#define JANELA_N_AMOSTRAS 30
 
 typedef struct {
     sensor_bno085_sample_t amostras[JANELA_N_AMOSTRAS];
