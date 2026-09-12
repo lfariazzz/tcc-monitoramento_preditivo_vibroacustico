@@ -1,6 +1,6 @@
 # Monitoramento Preditivo Vibroacústico com Edge AI
 
-> Detectar a degradação de equipamentos rotativos antes da falha, direto na borda, lendo o que a vibração e o ruído já denunciam antes que um humano perceba.
+> Detectar a degradação de equipamentos rotativos antes da falha, direto na borda, lendo o que a vibração e o ruído denunciam o imperceptível por um humano.
 
 Trabalho de Conclusão do Intensivo Maker (PNAAT 2026), Solução de IoT com inferência embarcada (Edge AI): monitoramento contínuo de vibração e ruído harmônico de um equipamento rotativo, classificação local em três níveis de severidade e resposta local + remota via MQTT.
 
@@ -77,14 +77,10 @@ flowchart LR
     class MQTT,DASH rede
 ```
 
-> O corte de energia do relé sobre o equipamento monitorado e refinamentos futuros do dashboard (histórico gráfico, múltiplos dashboards) não são representados graficamente aqui; ficam descritos em texto para não sobrecarregar o diagrama.
-
 ---
 
 
 ## 3. Requisitos e Dependências
-
-> A lista abaixo deve representar **a mesma solução** descrita no diagrama e nos requisitos — qualquer item aqui precisa aparecer também na arquitetura, e vice-versa.
 
 ### 3.1 Hardware
 
@@ -102,89 +98,98 @@ flowchart LR
 
 ### 3.2 Software / Bibliotecas / Plataformas
 
-| Item | Uso | Versão |
-|---|---|---|
-| ESP-IDF | Framework de desenvolvimento (FreeRTOS, drivers nativos, MQTT, Wi-Fi) | v5.5.5 |
-| `rinku404/bno085` | Driver do BNO085 (protocolo SH-2), via ESP-IDF Component Manager | ^1.2.0 |
-| `esp-idf-lib/ads111x` | Driver do ADS1115 em modo de conversão contínua, via ESP-IDF Component Manager | 1.1.14 |
-| `esp-idf-lib/ds3231` | Driver do RTC DS3231 (módulo HW-084), via ESP-IDF Component Manager | 1.1.7 |
-| `esp-idf-lib/i2cdev` | Dependência compartilhada do `ads111x` e do `ds3231` — utilitário thread-safe de acesso I2C | (resolvida automaticamente) |
-| Edge Impulse SDK | Modelo de inferência exportado (classificação normal/anômalo) | — |
-| `esp-mqtt` (nativo ESP-IDF) | Cliente MQTT para publicação de eventos | nativo |
-| `esp_wifi` (nativo ESP-IDF) | Conectividade Wi-Fi | nativo |
-| `esp_vfs_fat` + driver SD/SPI (nativo ESP-IDF) | Armazenamento local (MicroSD, FATFS) | nativo |
+> Status de integração: ✅ Implementados na PoC e declaradas em `firmware/main/idf_component.yml` / `firmware/dependencies.lock` · 🔜 prevista pela arquitetura, ainda não declarada no build.
+
+| Item | Uso | Versão | Status |
+|---|---|---|---|
+| ESP-IDF | Framework de desenvolvimento (FreeRTOS, drivers nativos, MQTT, Wi-Fi) | v5.5.5 | ✅ |
+| `rinku404/bno085` | Driver do BNO085 (protocolo SH-2), via ESP-IDF Component Manager | ^1.2.0 | ✅ |
+| `esp-idf-lib/ads111x` | Driver do ADS1115 em modo de conversão contínua, via ESP-IDF Component Manager | 1.1.14 | 🔜 |
+| `esp-idf-lib/ds3231` | Driver do RTC DS3231 (módulo HW-084), via ESP-IDF Component Manager | 1.1.7 | 🔜 |
+| `esp-idf-lib/i2cdev` | Dependência compartilhada do `ads111x` e do `ds3231` — utilitário thread-safe de acesso I2C | — | 🔜 |
+| Edge Impulse SDK | Modelo de inferência exportado (classificação normal/anômalo) | — | ✅ |
+| `esp-mqtt` (nativo ESP-IDF) | Cliente MQTT para publicação de eventos | nativo | 🔜 |
+| `esp_wifi` (nativo ESP-IDF) | Conectividade Wi-Fi | nativo | 🔜 |
+| `esp_vfs_fat` + driver SD/SPI (nativo ESP-IDF) | Armazenamento local (MicroSD, FATFS) | nativo | 🔜 |
 
 ---
 ## 4. Pré-requisitos e Recursos Necessários
 
-> Elemento previsto na anatomia do README (pergunta estrutural "o que eu preciso ter antes de começar?"), aplicável desde esta entrega — a Entrega 6 exige que essas informações estejam completas e sem ambiguidade, não que a seção só passe a existir ali.
-
-
-- [ ] [PREENCHER — hardware físico necessário]
-- [ ] [PREENCHER — software instalado na máquina de desenvolvimento]
-- [ ] [PREENCHER — contas/serviços externos necessários]
-- [ ] [PREENCHER — conhecimento mínimo esperado, se houver]
+- [x] **Hardware físico:** placa Heltec WiFi LoRa 32 V3 (ESP32-S3) e cabo USB-C. Os demais componentes da Seção 3.1 (BNO085, KY-038, ADS1115, relé, LED RGB, buzzer, RTC + MicroSD, cooler) são necessários para a montagem completa da bancada; hoje o firmware já integra BNO085, LED RGB e buzzer (ver Seção 3.2), os demais estão em desenvolvimento.
+- [x] **Software na máquina de desenvolvimento:** [ESP-IDF v5.5.5](https://docs.espressif.com/projects/esp-idf/en/v5.5.5/esp32s3/get-started/index.html) instalado (inclui o toolchain `xtensa-esp32s3`), Git. Opcional: VS Code + extensão Espressif IDF.
+- [x] **Contas/serviços externos:** conta no [Edge Impulse](https://edgeimpulse.com/) só é necessária caso o modelo precise ser retreinado/reexportado — o modelo já treinado vem versionado em `firmware/components/tflite-model/`, não é obrigatório recriá-lo para compilar o firmware.
 
 ---
 
 ## 5. Instalação, Configuração e Execução
 
-> Os passos aqui devem corresponder exatamente às dependências listadas na Seção 3 (exigência da Entrega 4) e serem completos o suficiente para reprodução sem ambiguidade (exigência da Entrega 6).
 
 ### 5.1 Clonar o repositório
 ```bash
-[PREENCHER]
+git clone https://github.com/lfariazzz/tcc-monitoramento_preditivo_vibroacustico.git
+cd tcc-monitoramento_preditivo_vibroacustico/firmware
 ```
 
 ### 5.2 Instalar dependências
 ```bash
-[PREENCHER]
+# Ativa o ambiente ESP-IDF na sessão atual do terminal (necessário sempre que abrir um terminal novo)
+. $HOME/esp/esp-idf/export.sh      # Linux/macOS
+# ou: %userprofile%\esp\esp-idf\export.bat   # Windows (cmd)
+
+idf.py set-target esp32s3
+idf.py build
 ```
+O ESP-IDF Component Manager resolve automaticamente a dependência declarada em `firmware/main/idf_component.yml` (hoje, `rinku404/bno085`) a partir do `firmware/dependencies.lock`, sem passo manual adicional. As demais dependências listadas na Seção 3.2 como 🔜 (`ads111x`, `ds3231`, `i2cdev`, `esp-mqtt`, `esp_wifi`, `esp_vfs_fat`) ainda não estão declaradas no manifesto — serão adicionadas quando os componentes correspondentes (`sensor_ky038`, `storage_datalogger`, `connectivity_mqtt`) forem implementados.
 
 ### 5.3 Configuração de rede e credenciais
-```
-[PREENCHER]
-```
+
+> Conectividade Wi-Fi/MQTT ainda não está implementada no firmware (Fase de PoC) - Disponível apenas na Entrega Final
+
 
 ### 5.4 Como executar
 
 > Comandos ou procedimentos exatos para rodar o projeto do zero.
 
 ```bash
-[PREENCHER: comando de build]
-[PREENCHER: comando de flash/upload]
-[PREENCHER: comando de monitoramento, se aplicável]
+idf.py build                 # compila o firmware (ver 5.2)
+idf.py -p <PORTA> flash      # grava na placa (ex: -p /dev/ttyACM0)
+idf.py -p <PORTA> monitor    # acompanha a saída serial em tempo real
 ```
+> Linux: se a porta não aparecer ou der "Permission denied", adicione seu usuário ao grupo `dialout` (`sudo usermod -aG dialout $USER`, depois reabra a sessão). Windows: a porta aparece como `COMx` no Gerenciador de Dispositivos.
 
-[PREENCHER: se houver dashboard/painel externo, como acessá-lo]
+### 5.5 Configuração adicional
 
-
-### 5.5 Configuração adicional (modelo, integrações, etc.)
-```
-[PREENCHER]
-```
+O modelo de classificação (Edge Impulse) já vem exportado e versionado em `firmware/components/tflite-model/` e `firmware/components/model-parameters/` — não é necessário reexportá-lo para compilar e rodar o firmware atual. Reexportar só é preciso se o dataset de treinamento for atualizado; nesse caso, o novo export do Edge Impulse (formato "C++ library" para ESP-IDF) deve substituir o conteúdo dessas duas pastas.
 
 ---
 
 ## 6. Instruções de Montagem (Hardware)
 
-> Exigência explícita da Entrega 6 quando há conexões elétricas. Incluir pinout completo e, se possível, imagem/diagrama do circuito montado.
+`[Não disponível na PoC - Apenas na Entrega Final]`
 
 ### 6.1 Tabela de conexões (pinout)
 
-| Componente | Pino do componente | Pino do controlador | Observação |
+> Preenchida parcialmente apenas com os componentes já integrados ao firmware na PoC (ver Seção 3.2).
+
+| Componente | Pino do componente | Pino do controlador (GPIO) | Observação |
 |---|---|---|---|
-| [PREENCHER] | [PREENCHER] | [PREENCHER] | [PREENCHER] |
-| [PREENCHER] | [PREENCHER] | [PREENCHER] | [PREENCHER] |
-| [PREENCHER] | [PREENCHER] | [PREENCHER] | [PREENCHER] |
+| BNO085 | SDA | GPIO 6 | I2C, endereço `0x4A` |
+| BNO085 | SCL | GPIO 7 | I2C, 400 kHz |
+| BNO085 | INT | GPIO 5 | Pinagem provisória de bancada — ver issue #15 |
+| BNO085 | RESET | GPIO 4 | Pinagem provisória de bancada — ver issue #15 |
+| Buzzer | sinal | GPIO 47 | Digital, ativo em nível alto |
+| LED RGB | R | GPIO 42 | Ativo em nível alto (catodo comum) |
+| LED RGB | G | GPIO 2 | Ativo em nível alto (catodo comum) |
+| LED RGB | B | GPIO 3 | Ativo em nível alto (catodo comum) |
+| KY-038, ADS1115, Relé, RTC + MicroSD | — | — | `[Não disponível na PoC - Apenas na Entrega Final]` — componentes ainda não implementados no firmware |
 
 ### 6.2 Diagrama elétrico / foto da montagem
 
-[PREENCHER: inserir imagem do esquemático ou foto real da bancada montada]
+`[Não disponível na PoC - Apenas na Entrega Final]`
 
 ### 6.3 Cuidados de montagem
 
-- [PREENCHER]
+ `[Não disponível na PoC - Apenas na Entrega Final]`
 
 ---
 
@@ -198,24 +203,25 @@ flowchart LR
 ├── LICENSE
 ├── firmware/
 │   ├── CMakeLists.txt
+│   ├── dependencies.lock           (lockfile do ESP-IDF Component Manager — ver Seção 3.2)
 │   ├── components/
-│   │   ├── edge-impulse-sdk/       (gerado — gitignored)
-│   │   ├── model-parameters/       (gerado — gitignored)
-│   │   ├── tflite-model/           (gerado — gitignored)
-│   │   ├── sensor_bno085/
-│   │   ├── sensor_ky038/
-│   │   ├── actuator_relay/
-│   │   ├── actuator_buzzer/
-│   │   ├── actuator_led_rgb/
-│   │   ├── storage_datalogger/
-│   │   └── connectivity_mqtt/
+│   │   ├── edge-impulse-sdk/       (gerado pelo Edge Impulse; versionado para build reprodutível sem reexportar)
+│   │   ├── model-parameters/       (gerado pelo Edge Impulse; versionado para build reprodutível sem reexportar)
+│   │   ├── tflite-model/           (gerado pelo Edge Impulse; versionado para build reprodutível sem reexportar)
+│   │   ├── sensor_bno085/          (implementado)
+│   │   ├── sensor_ky038/           (.gitkeep — a implementar)
+│   │   ├── actuator_relay/         (.gitkeep — a implementar)
+│   │   ├── actuator_buzzer/        (implementado)
+│   │   ├── actuator_led_rgb/       (implementado)
+│   │   ├── storage_datalogger/     (.gitkeep — a implementar)
+│   │   └── connectivity_mqtt/      (.gitkeep — a implementar)
 │   └── main/
+│       ├── idf_component.yml       (declara as dependências gerenciadas — ver Seção 3.2)
 │       ├── main.c
 │       ├── task_aquisicao.c
-│       ├── task_inferencia.c
-│       └── task_rede.c
+│       └── task_inferencia.cpp
 ├── dashboard/
-│   └── flow_nodered.json
+│   └── .gitkeep                    (painel Node-RED a ser adicionado — ver RF-09)
 └── docs/                           (artefatos entregues)
 ```
 
