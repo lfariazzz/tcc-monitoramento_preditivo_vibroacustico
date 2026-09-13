@@ -9,6 +9,7 @@ idf_build_set_property(COMPILE_OPTIONS "-Wno-error=nonnull-compare" APPEND)
 idf_build_set_property(COMPILE_OPTIONS "-Wno-error=stringop-truncation" APPEND)
 idf_build_set_property(COMPILE_OPTIONS "-Wno-error=uninitialized" APPEND)
 idf_build_set_property(COMPILE_OPTIONS "-Wno-error=format=" APPEND)
+idf_build_set_property(COMPILE_OPTIONS "-Wno-error=deprecated-declarations" APPEND)
 idf_build_set_property(COMPILE_OPTIONS "-Wno-unused-but-set-parameter" APPEND)
 idf_build_set_property(COMPILE_OPTIONS "-Wno-missing-field-initializers" APPEND)
 
