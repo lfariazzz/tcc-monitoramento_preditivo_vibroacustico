@@ -2,6 +2,7 @@
 #include "bno085.h"
 #include "driver/i2c_master.h"
 #include "esp_log.h"
+#include <stdbool.h>
 #include <string.h>
 
 static const char *TAG = "sensor_bno085";
@@ -18,6 +19,7 @@ static const char *TAG = "sensor_bno085";
 static bno085_handle_t s_handle = NULL;
 static i2c_master_bus_handle_t s_bus = NULL;
 static sensor_bno085_sample_t s_latest = {0};
+static bool s_has_new_sample = false;
 
 static void accel_callback(bno085_handle_t handle,
                             const bno085_sensor_value_t *value,
@@ -27,6 +29,7 @@ static void accel_callback(bno085_handle_t handle,
         s_latest.x = value->data.accelerometer.x;
         s_latest.y = value->data.accelerometer.y;
         s_latest.z = value->data.accelerometer.z;
+        s_has_new_sample = true;
     }
 }
 
@@ -79,6 +82,9 @@ void sensor_bno085_poll(void)
 esp_err_t sensor_bno085_get_latest(sensor_bno085_sample_t *out)
 {
     if (!out) return ESP_ERR_INVALID_ARG;
+    if (!s_has_new_sample) return ESP_ERR_NOT_FOUND;
+
     *out = s_latest;
+    s_has_new_sample = false;
     return ESP_OK;
 }

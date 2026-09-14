@@ -6,6 +6,7 @@ extern "C" {
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
+#include "esp_task_wdt.h"
 #include "esp_timer.h"
 #include "esp_log.h"
 }
@@ -117,6 +118,7 @@ static void controlar_buzzer(led_severidade_t severidade)
 
 void task_inferencia(void *pvParameters)
 {
+    ESP_ERROR_CHECK(esp_task_wdt_add(NULL));
     actuator_buzzer_init();
     actuator_led_rgb_init();
 
@@ -137,6 +139,7 @@ void task_inferencia(void *pvParameters)
             s_beep_leve_ativo = false;
             s_em_severa = false;
             s_rele_acionado = false;
+            ESP_ERROR_CHECK(esp_task_wdt_reset());
             continue;
         }
 
@@ -149,9 +152,15 @@ void task_inferencia(void *pvParameters)
             &signal);
 
         ei_impulse_result_t result = { 0 };
+        int64_t inicio_inferencia_us = esp_timer_get_time();
         EI_IMPULSE_ERROR err = run_classifier(&signal, &result, false);
+        int64_t duracao_inferencia_ms =
+            (esp_timer_get_time() - inicio_inferencia_us) / 1000;
+        ESP_LOGI(TAG, "Inferência concluída em %lld ms",
+                 (long long)duracao_inferencia_ms);
         if (err != EI_IMPULSE_OK) {
             ESP_LOGE(TAG, "Falha na inferência: %d", err);
+            ESP_ERROR_CHECK(esp_task_wdt_reset());
             continue;
         }
 
@@ -181,5 +190,9 @@ void task_inferencia(void *pvParameters)
         controlar_buzzer(severidade);
 
         avaliar_persistencia_severa(severidade == LED_SEVERIDADE_SEVERA);
+
+        // Alimenta apenas após concluir o processamento da janela. Espera sem
+        // dados ou inferência travada permanecem detectáveis pelo TWDT.
+        ESP_ERROR_CHECK(esp_task_wdt_reset());
     }
 }

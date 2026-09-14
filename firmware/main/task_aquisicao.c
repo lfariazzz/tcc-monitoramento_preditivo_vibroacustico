@@ -4,7 +4,11 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
+#include "esp_task_wdt.h"
+#include "esp_log.h"
 #include "esp_timer.h"
+
+static const char *TAG = "task_aquisicao";
 
 extern SemaphoreHandle_t g_sem_janela_pronta; // criado em main.c
 
@@ -21,7 +25,12 @@ const janela_dados_t* task_aquisicao_get_janela_pronta(void)
 
 void task_aquisicao(void *pvParameters)
 {
-    sensor_bno085_init();
+    ESP_ERROR_CHECK(esp_task_wdt_add(NULL));
+    esp_err_t init_err = sensor_bno085_init();
+    if (init_err != ESP_OK) {
+        ESP_LOGE(TAG, "Aquisição indisponível; aguardando recuperação pelo TWDT: %s",
+                 esp_err_to_name(init_err));
+    }
 
     janela_dados_t *atual = &s_buffers[s_indice_escrita];
     atual->count = 0;
@@ -46,8 +55,11 @@ void task_aquisicao(void *pvParameters)
 
                 xSemaphoreGive(g_sem_janela_pronta);
             }
-        }
 
+            // Uma amostra nova foi efetivamente incorporada. Sem callback novo,
+            // polling travado ou sensor inativo, o TWDT expira e reinicia a placa.
+            ESP_ERROR_CHECK(esp_task_wdt_reset());
+        }
         vTaskDelay(periodo);
     }
 }

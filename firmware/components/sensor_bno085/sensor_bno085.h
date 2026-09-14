@@ -20,5 +20,8 @@ esp_err_t sensor_bno085_init(void);
  */
 void sensor_bno085_poll(void);
 
-/** Copia a última amostra recebida do sensor para 'out'. */
+/**
+ * Consome a amostra mais recente recebida do sensor.
+ * Retorna ESP_ERR_NOT_FOUND enquanto nenhum callback novo tiver ocorrido.
+ */
 esp_err_t sensor_bno085_get_latest(sensor_bno085_sample_t *out);
