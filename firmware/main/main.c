@@ -1,35 +1,31 @@
 #include <stdio.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "driver/gpio.h"
-
-#define KY038_D0_GPIO  3
-
-static volatile int contador_picos = 0;
-
-static void IRAM_ATTR isr_ky038(void *arg)
-{
-    contador_picos++;
-}
+#include "sensor_ky038.h"
 
 void app_main(void)
 {
-    gpio_config_t cfg = {
-        .pin_bit_mask = (1ULL << KY038_D0_GPIO),
-        .mode = GPIO_MODE_INPUT,
-        .pull_up_en = GPIO_PULLUP_DISABLE,
-        .pull_down_en = GPIO_PULLDOWN_DISABLE,
-        .intr_type = GPIO_INTR_POSEDGE,  // dispara na borda de subida
-    };
-    gpio_config(&cfg);
+    esp_err_t err = sensor_ky038_init();
+    if (err != ESP_OK) {
+        printf("Falha ao inicializar KY-038: %s\n", esp_err_to_name(err));
+        return;
+    }
 
-    gpio_install_isr_service(0);
-    gpio_isr_handler_add(KY038_D0_GPIO, isr_ky038, NULL);
-
-    printf("Aguardando picos de som no D0...\n");
+    printf("KY-038 inicializado. Lendo D0 (picos) e A0 (som fino)...\n");
 
     for (;;) {
-        printf("Picos detectados: %d\n", contador_picos);
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        uint32_t picos = sensor_ky038_pico_count_reset();
+
+        int16_t som;
+        esp_err_t err_leitura = sensor_ky038_ler_som(&som);
+
+        if (err_leitura == ESP_OK) {
+            printf("Picos: %lu | Som (bruto): %d\n", picos, som);
+        } else {
+            printf("Picos: %lu | Erro na leitura de som: %s\n",
+                   picos, esp_err_to_name(err_leitura));
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(500));
     }
 }

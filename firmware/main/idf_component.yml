@@ -1,2 +1,4 @@
 dependencies:
   rinku404/bno085: "^1.2.0"
+  esp-idf-lib/ads111x: "^1.1.8"
+  esp-idf-lib/i2cdev: "^2.1.0"
