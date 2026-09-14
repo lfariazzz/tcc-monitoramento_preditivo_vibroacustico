@@ -1,7 +1,7 @@
 #include "actuator_buzzer.h"
 #include "driver/gpio.h"
 
-#define BUZZER_GPIO  47
+#define BUZZER_GPIO  42
 
 esp_err_t actuator_buzzer_init(void)
 {

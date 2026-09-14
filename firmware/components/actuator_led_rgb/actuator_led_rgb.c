@@ -1,9 +1,9 @@
 #include "actuator_led_rgb.h"
 #include "driver/gpio.h"
 
-#define LED_GPIO_R  42
-#define LED_GPIO_G  2
-#define LED_GPIO_B  3
+#define LED_GPIO_R  47
+#define LED_GPIO_G  48
+#define LED_GPIO_B  26
 
 // Catodo comum confirmado por teste físico: nível ALTO acende cada cor.
 #define COR_ACESA   1
