@@ -1,6 +1,7 @@
 #include "sensor_ky038.h"
 #include "driver/gpio.h"
 #include "freertos/FreeRTOS.h"
+#include "esp_timer.h"
 #include "i2cdev.h"
 #include "ads111x.h"
 
@@ -10,12 +11,27 @@
 #define ADS1115_SCL_GPIO   7
 #define ADS1115_ADDR       ADS111X_ADDR_GND  // 0x48
 
+// Debounce: ignora novos disparos dentro desse intervalo após o último
+// pico válido. Um único evento sonoro real (palma, pico de vibração)
+// dura tipicamente dezenas de milissegundos — abaixo disso é ruído de
+// contato do comparador, não um novo evento.
+// TODO: calibrar este valor com o hardware real; 50ms é um ponto de
+// partida razoável, não testado empiricamente ainda.
+#define DEBOUNCE_US   50000
+
 static volatile uint32_t s_contador_picos = 0;
+static volatile int64_t s_ultimo_pico_us = 0;
 static i2c_dev_t s_ads1115_dev = { 0 };
 
 static void IRAM_ATTR isr_ky038(void *arg)
 {
-    s_contador_picos++;
+    int64_t agora_us = esp_timer_get_time();
+    if (agora_us - s_ultimo_pico_us >= DEBOUNCE_US) {
+        s_contador_picos++;
+        s_ultimo_pico_us = agora_us;
+    }
+    // Disparos dentro da janela de debounce são silenciosamente
+    // ignorados — não contam como pico novo.
 }
 
 static esp_err_t init_d0(void)
@@ -51,9 +67,6 @@ static esp_err_t init_a0(void)
     err = ads111x_set_input_mux(&s_ads1115_dev, ADS111X_MUX_0_GND);
     if (err != ESP_OK) return err;
 
-    // Ganho padrão (±2.048V) — o único que não saturou nos testes de
-    // bancada; sensibilidade fina compensada pelo ajuste do trimpot
-    // físico do módulo (repouso calibrado em ~10000).
     return ads111x_set_gain(&s_ads1115_dev, ADS111X_GAIN_2V048);
 }
 
