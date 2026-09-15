@@ -33,14 +33,14 @@ static void accel_callback(bno085_handle_t handle,
 
 esp_err_t sensor_bno085_init(void)
 {
-    // BNO085 e KY-038/ADS1115 compartilham o mesmo barramento físico
-    // (SDA=6, SCL=7, I2C_NUM_0). O sensor_ky038 é inicializado primeiro
-    // e cria o barramento via i2cdev; aqui só reaproveitamos o handle
-    // já instalado em vez de chamar i2c_new_master_bus de novo, o que
-    // falharia com ESP_ERR_INVALID_STATE (porta já adquirida).
+    // PRÉ-REQUISITO: algum dispositivo baseado em i2cdev (ex: sensor_ky038,
+    // via ads111x) precisa ter sido inicializado ANTES desta chamada —
+    // é o que cria o barramento físico que aqui só reaproveitamos.
+    // Ver main.c: sensor_ky038_init() deve vir antes de sensor_bno085_init().
     esp_err_t err = i2cdev_get_shared_handle(I2C_NUM_0, (void **)&s_bus);
     if (err != ESP_OK) {
-        ESP_LOGE(TAG, "Falha ao obter barramento I2C compartilhado: %s", esp_err_to_name(err));
+        ESP_LOGE(TAG, "Falha ao obter barramento I2C compartilhado (verifique "
+                       "se sensor_ky038_init() rodou antes): %s", esp_err_to_name(err));
         return err;
     }
 

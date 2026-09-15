@@ -29,10 +29,13 @@ extern "C" const janela_dados_t* task_aquisicao_get_janela_pronta(void);
 // não do modelo de IA (motor ligado/desligado é regra determinística,
 // não padrão de vibração a ser reconhecido por ML).
 //
-// TODO: calibrar este valor com dados reais de bancada, usando o
-// monitor_vibracao_simples.py (motor desligado vs. ligado sem peso).
-// Placeholder não validado.
-#define LIMIAR_DESVIO_PARADO_MS2   0.5f
+// Calibrado em bancada com monitor_vibracao_simples.py: desligado fica
+// estável em ~0.18-0.20 (desvio-padrão de magnitude), ligado sobe
+// rapidamente durante o arranque já passando de 0.34, estabilizando na
+// operação normal por volta de ~2.2-2.4. Limiar de 0.30 dá folga segura
+// acima do teto de "desligado" e ainda captura o motor mesmo nos
+// primeiros instantes de arranque.
+#define LIMIAR_DESVIO_PARADO_MS2   0.30f
 
 static int64_t s_inicio_severa_us = 0;
 static bool s_em_severa = false;
