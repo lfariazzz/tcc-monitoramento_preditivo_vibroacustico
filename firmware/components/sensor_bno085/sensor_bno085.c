@@ -1,6 +1,7 @@
 #include "sensor_bno085.h"
 #include "bno085.h"
 #include "driver/i2c_master.h"
+#include "i2cdev.h"
 #include "esp_log.h"
 #include <string.h>
 
@@ -32,16 +33,14 @@ static void accel_callback(bno085_handle_t handle,
 
 esp_err_t sensor_bno085_init(void)
 {
-    i2c_master_bus_config_t bus_cfg = {
-        .i2c_port = I2C_NUM_0,
-        .sda_io_num = BNO085_I2C_SDA_GPIO,
-        .scl_io_num = BNO085_I2C_SCL_GPIO,
-        .clk_source = I2C_CLK_SRC_DEFAULT,
-        .glitch_ignore_cnt = 7,
-    };
-    esp_err_t err = i2c_new_master_bus(&bus_cfg, &s_bus);
+    // BNO085 e KY-038/ADS1115 compartilham o mesmo barramento físico
+    // (SDA=6, SCL=7, I2C_NUM_0). O sensor_ky038 é inicializado primeiro
+    // e cria o barramento via i2cdev; aqui só reaproveitamos o handle
+    // já instalado em vez de chamar i2c_new_master_bus de novo, o que
+    // falharia com ESP_ERR_INVALID_STATE (porta já adquirida).
+    esp_err_t err = i2cdev_get_shared_handle(I2C_NUM_0, (void **)&s_bus);
     if (err != ESP_OK) {
-        ESP_LOGE(TAG, "Falha ao criar barramento I2C: %s", esp_err_to_name(err));
+        ESP_LOGE(TAG, "Falha ao obter barramento I2C compartilhado: %s", esp_err_to_name(err));
         return err;
     }
 
