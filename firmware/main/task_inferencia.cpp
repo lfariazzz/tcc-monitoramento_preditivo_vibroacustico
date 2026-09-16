@@ -143,6 +143,29 @@ void task_inferencia(void *pvParameters)
             continue;
         }
 
+        // ============================================================
+        // TEMPORÁRIO — debug de formato do buffer, remover depois de
+        // confirmar que o layout de memória está correto.
+        // ============================================================
+        ESP_LOGI(TAG, "Amostra 0: x=%.4f y=%.4f z=%.4f som=%.1f picos=%.1f",
+                 janela->amostras[0].x, janela->amostras[0].y, janela->amostras[0].z,
+                 janela->amostras[0].som, janela->amostras[0].picos);
+        ESP_LOGI(TAG, "Amostra 1: x=%.4f y=%.4f z=%.4f som=%.1f picos=%.1f",
+                 janela->amostras[1].x, janela->amostras[1].y, janela->amostras[1].z,
+                 janela->amostras[1].som, janela->amostras[1].picos);
+        ESP_LOGI(TAG, "Amostra 99: x=%.4f y=%.4f z=%.4f som=%.1f picos=%.1f",
+                 janela->amostras[99].x, janela->amostras[99].y, janela->amostras[99].z,
+                 janela->amostras[99].som, janela->amostras[99].picos);
+        {
+            float *buf = (float *)janela->amostras;
+            ESP_LOGI(TAG, "Buffer bruto [0..9]: %.4f %.4f %.4f %.1f %.1f %.4f %.4f %.4f %.1f %.1f",
+                     buf[0], buf[1], buf[2], buf[3], buf[4],
+                     buf[5], buf[6], buf[7], buf[8], buf[9]);
+        }
+        // ============================================================
+        // FIM DO DEBUG TEMPORÁRIO
+        // ============================================================
+
         // sensor_bno085_sample_t {x,y,z} é contíguo em memória — já é o
         // formato plano [x0,y0,z0,x1,y1,z1,...] que o Edge Impulse espera.
         signal_t signal;

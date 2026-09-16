@@ -20,8 +20,8 @@ const janela_dados_t* task_aquisicao_get_janela_pronta(void)
 
 void task_aquisicao(void *pvParameters)
 {
-    sensor_bno085_init();
     sensor_ky038_init();
+    sensor_bno085_init();
 
     janela_dados_t *atual = &s_buffers[s_indice_escrita];
     atual->count = 0;
