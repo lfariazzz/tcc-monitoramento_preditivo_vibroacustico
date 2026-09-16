@@ -2,3 +2,9 @@
 # Espressif IoT Development Framework (ESP-IDF) 5.5.5 Project Minimal Configuration
 #
 CONFIG_IDF_TARGET="esp32s3"
+
+# firmware.bin passou de 1MB com o classificador TFLite Micro
+# (edge-impulse-sdk) agora efetivamente linkado (task_inferencia rodando de
+# verdade) — a partição "factory" única de 1MB (SINGLE_APP) não cabe mais.
+# 1500K ainda sobra folga dentro do flash de 2MB da placa.
+CONFIG_PARTITION_TABLE_SINGLE_APP_LARGE=y
