@@ -1,16 +1,16 @@
 #include <stdio.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "freertos/semphr.h"
-#include "task_aquisicao.h"
-#include "task_inferencia.h"
-
-SemaphoreHandle_t g_sem_janela_pronta;
+#include "connectivity_mqtt.h"
 
 void app_main(void)
 {
-    g_sem_janela_pronta = xSemaphoreCreateBinary();
+    esp_err_t err = connectivity_mqtt_init();
+    printf("Init connectivity_mqtt: %s\n", esp_err_to_name(err));
 
-    xTaskCreate(task_aquisicao, "task_aquisicao", 4096, NULL, 5, NULL);
-    xTaskCreate(task_inferencia, "task_inferencia", 8192, NULL, 5, NULL);
+    for (;;) {
+        connectivity_mqtt_publicar_severidade("Teste");
+        printf("Tentativa de publicacao enviada\n");
+        vTaskDelay(pdMS_TO_TICKS(3000));
+    }
 }

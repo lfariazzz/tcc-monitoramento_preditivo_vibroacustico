@@ -4,6 +4,7 @@ extern "C" {
 #include "actuator_led_rgb.h"
 #include "actuator_buzzer.h"
 #include "actuator_relay.h"
+#include "connectivity_mqtt.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
@@ -133,6 +134,7 @@ void task_inferencia(void *pvParameters)
     actuator_buzzer_init();
     actuator_led_rgb_init();
     actuator_relay_init();
+    connectivity_mqtt_init();
 
     for (;;) {
         if (xSemaphoreTake(g_sem_janela_pronta, portMAX_DELAY) != pdTRUE) {
@@ -216,6 +218,7 @@ void task_inferencia(void *pvParameters)
 
         actuator_led_rgb_set(severidade);
         controlar_buzzer(severidade);
+        connectivity_mqtt_publicar_severidade(melhor_label);
 
         avaliar_persistencia_severa(severidade == LED_SEVERIDADE_SEVERA);
     }

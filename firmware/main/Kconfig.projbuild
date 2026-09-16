@@ -1,0 +1,22 @@
+menu "Configuração de Conectividade"
+
+    config WIFI_SSID
+        string "SSID do Wi-Fi"
+        default "minha-rede"
+        help
+            Nome da rede Wi-Fi que o ESP32-S3 deve conectar.
+
+    config WIFI_PASSWORD
+        string "Senha do Wi-Fi"
+        default ""
+        help
+            Senha da rede Wi-Fi. Não é commitada com o sdkconfig padrão
+            versionado — cada máquina configura a sua via 'idf.py menuconfig'.
+
+    config MQTT_BROKER_URI
+        string "URI do broker MQTT"
+        default "mqtt://broker.hivemq.com"
+        help
+            Endereço completo do broker MQTT (ex: mqtt://host:porta).
+
+endmenu
