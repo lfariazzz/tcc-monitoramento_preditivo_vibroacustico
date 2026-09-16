@@ -3,6 +3,7 @@ extern "C" {
 #include "janela_dados.h"
 #include "actuator_led_rgb.h"
 #include "actuator_buzzer.h"
+#include "actuator_relay.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
@@ -20,6 +21,10 @@ extern "C" const janela_dados_t* task_aquisicao_get_janela_pronta(void);
 
 // RNF-05: tempo de persistência de anomalia severa antes de acionar o relé
 #define TEMPO_PERSISTENCIA_SEVERA_MS   5000
+
+// RNF-05 (extensão): tempo de estabilidade em "parado" antes de permitir
+// religar o relé automaticamente, após um corte por anomalia severa.
+#define TEMPO_ESTABILIDADE_RELIGAR_MS  5000
 
 // Duração do beep breve para anomalia LEVE — depois disso, desliga sozinho
 // mesmo que a condição leve persista. SEVERA continua contínua (sem limite).
@@ -39,16 +44,19 @@ extern "C" const janela_dados_t* task_aquisicao_get_janela_pronta(void);
 
 static int64_t s_inicio_severa_us = 0;
 static bool s_em_severa = false;
+
+// s_rele_acionado reflete o ESTADO FÍSICO real do relé — só vira true logo
+// após actuator_relay_on() ser chamado de fato, e só vira false logo após
+// actuator_relay_off() ser chamado de fato. Nunca é setado "antecipadamente"
+// só porque a severidade mudou de classe, para não dessincronizar do
+// hardware real.
 static bool s_rele_acionado = false;
 
 static int64_t s_inicio_beep_leve_us = 0;
 static bool s_beep_leve_ativo = false;
 
-// TODO: substituir por actuator_relay real quando esse componente existir (RF-08)
-static void actuator_relay_on(void)
-{
-    ESP_LOGW(TAG, "RELÉ ACIONADO (corte de energia) — RF-08");
-}
+static int64_t s_inicio_parado_us = 0;
+static bool s_contando_estabilidade = false;
 
 static void avaliar_persistencia_severa(bool esta_severa)
 {
@@ -58,7 +66,6 @@ static void avaliar_persistencia_severa(bool esta_severa)
         if (!s_em_severa) {
             s_em_severa = true;
             s_inicio_severa_us = agora_us;
-            s_rele_acionado = false;
         } else if (!s_rele_acionado) {
             int64_t duracao_ms = (agora_us - s_inicio_severa_us) / 1000;
             if (duracao_ms >= TEMPO_PERSISTENCIA_SEVERA_MS) {
@@ -67,9 +74,12 @@ static void avaliar_persistencia_severa(bool esta_severa)
             }
         }
     } else {
-        // Saiu de severa antes do limiar: zera a contagem (RNF-05)
+        // Saiu de severa: zera só o controle de PERSISTÊNCIA (RNF-05).
+        // NÃO mexe em s_rele_acionado aqui — o relé, se já tiver sido
+        // cortado fisicamente, continua cortado até a lógica de
+        // religamento automático (ver bloco "parado" em task_inferencia)
+        // confirmar estabilidade e chamar actuator_relay_off() de verdade.
         s_em_severa = false;
-        s_rele_acionado = false;
     }
 }
 
@@ -122,6 +132,7 @@ void task_inferencia(void *pvParameters)
 {
     actuator_buzzer_init();
     actuator_led_rgb_init();
+    actuator_relay_init();
 
     for (;;) {
         if (xSemaphoreTake(g_sem_janela_pronta, portMAX_DELAY) != pdTRUE) {
@@ -131,40 +142,40 @@ void task_inferencia(void *pvParameters)
         const janela_dados_t *janela = task_aquisicao_get_janela_pronta();
 
         // Checagem de "parado" — regra de firmware, roda ANTES da inferência.
-        // Se o motor não está em movimento, não há motivo para gastar ciclos
-        // rodando o modelo de IA.
         if (esta_parado(janela)) {
             ESP_LOGI(TAG, "Motor parado (desvio abaixo do limiar)");
             actuator_led_rgb_set(LED_PARADO);
             actuator_buzzer_off();
             s_beep_leve_ativo = false;
             s_em_severa = false;
-            s_rele_acionado = false;
+
+            // Se o relé está cortado, conta o tempo de estabilidade em
+            // "parado" antes de religar automaticamente (5s estável).
+            if (s_rele_acionado) {
+                int64_t agora_us = esp_timer_get_time();
+                if (!s_contando_estabilidade) {
+                    s_contando_estabilidade = true;
+                    s_inicio_parado_us = agora_us;
+                } else {
+                    int64_t duracao_ms = (agora_us - s_inicio_parado_us) / 1000;
+                    if (duracao_ms >= TEMPO_ESTABILIDADE_RELIGAR_MS) {
+                        actuator_relay_off();
+                        s_rele_acionado = false;
+                        s_contando_estabilidade = false;
+                        ESP_LOGI(TAG, "Relé religado após estabilidade confirmada");
+                    }
+                }
+            } else {
+                s_contando_estabilidade = false;
+            }
+
             continue;
         }
 
-        // ============================================================
-        // TEMPORÁRIO — debug de formato do buffer, remover depois de
-        // confirmar que o layout de memória está correto.
-        // ============================================================
-        ESP_LOGI(TAG, "Amostra 0: x=%.4f y=%.4f z=%.4f som=%.1f picos=%.1f",
-                 janela->amostras[0].x, janela->amostras[0].y, janela->amostras[0].z,
-                 janela->amostras[0].som, janela->amostras[0].picos);
-        ESP_LOGI(TAG, "Amostra 1: x=%.4f y=%.4f z=%.4f som=%.1f picos=%.1f",
-                 janela->amostras[1].x, janela->amostras[1].y, janela->amostras[1].z,
-                 janela->amostras[1].som, janela->amostras[1].picos);
-        ESP_LOGI(TAG, "Amostra 99: x=%.4f y=%.4f z=%.4f som=%.1f picos=%.1f",
-                 janela->amostras[99].x, janela->amostras[99].y, janela->amostras[99].z,
-                 janela->amostras[99].som, janela->amostras[99].picos);
-        {
-            float *buf = (float *)janela->amostras;
-            ESP_LOGI(TAG, "Buffer bruto [0..9]: %.4f %.4f %.4f %.1f %.1f %.4f %.4f %.4f %.1f %.1f",
-                     buf[0], buf[1], buf[2], buf[3], buf[4],
-                     buf[5], buf[6], buf[7], buf[8], buf[9]);
-        }
-        // ============================================================
-        // FIM DO DEBUG TEMPORÁRIO
-        // ============================================================
+        // Motor rodando (não está parado): se saiu de "parado" antes de
+        // completar os 5s de estabilidade, cancela a contagem — só reinicia
+        // quando "parado" for detectado de forma contínua de novo.
+        s_contando_estabilidade = false;
 
         // sensor_bno085_sample_t {x,y,z} é contíguo em memória — já é o
         // formato plano [x0,y0,z0,x1,y1,z1,...] que o Edge Impulse espera.
