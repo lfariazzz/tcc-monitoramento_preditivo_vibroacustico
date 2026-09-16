@@ -98,24 +98,22 @@ flowchart LR
 
 ### 3.2 Software / Bibliotecas / Plataformas
 
-> Status de integração: ✅ Implementados na PoC e declaradas em `firmware/main/idf_component.yml` / `firmware/dependencies.lock` · 🔜 prevista pela arquitetura, ainda não declarada no build.
-
 | Item | Uso | Versão | Status |
 |---|---|---|---|
 | ESP-IDF | Framework de desenvolvimento (FreeRTOS, drivers nativos, MQTT, Wi-Fi) | v5.5.5 | ✅ |
 | `rinku404/bno085` | Driver do BNO085 (protocolo SH-2), via ESP-IDF Component Manager | ^1.2.0 | ✅ |
-| `esp-idf-lib/ads111x` | Driver do ADS1115 em modo de conversão contínua, via ESP-IDF Component Manager | 1.1.14 | 🔜 |
-| `esp-idf-lib/ds3231` | Driver do RTC DS3231 (módulo HW-084), via ESP-IDF Component Manager | 1.1.7 | 🔜 |
-| `esp-idf-lib/i2cdev` | Dependência compartilhada do `ads111x` e do `ds3231` — utilitário thread-safe de acesso I2C | — | 🔜 |
+| `esp-idf-lib/ads111x` | Driver do ADS1115 em modo de conversão contínua (sinal fino do KY-038), via ESP-IDF Component Manager | ^1.1.8 | ✅ |
+| `esp-idf-lib/i2cdev` | Dependência compartilhada do `ads111x` (e futuramente do `ds3231`) — utilitário thread-safe de acesso I2C | ^2.1.0 | ✅ |
+| `esp-idf-lib/ds3231` | Driver do RTC DS3231 (módulo HW-084), via ESP-IDF Component Manager | ^1.1.7 | ✅ |
 | Edge Impulse SDK | Modelo de inferência exportado (classificação normal/anômalo) | — | ✅ |
+| `esp_vfs_fat` + driver SD/SPI (nativo ESP-IDF) | Armazenamento local (MicroSD, FATFS) — usado por `storage_datalogger` | nativo | ✅ |
 | `esp-mqtt` (nativo ESP-IDF) | Cliente MQTT para publicação de eventos | nativo | 🔜 |
 | `esp_wifi` (nativo ESP-IDF) | Conectividade Wi-Fi | nativo | 🔜 |
-| `esp_vfs_fat` + driver SD/SPI (nativo ESP-IDF) | Armazenamento local (MicroSD, FATFS) | nativo | 🔜 |
 
 ---
 ## 4. Pré-requisitos e Recursos Necessários
 
-- [x] **Hardware físico:** placa Heltec WiFi LoRa 32 V3 (ESP32-S3) e cabo USB-C. Os demais componentes da Seção 3.1 (BNO085, KY-038, ADS1115, relé, LED RGB, buzzer, RTC + MicroSD, cooler) são necessários para a montagem completa da bancada; hoje o firmware já integra BNO085, LED RGB e buzzer (ver Seção 3.2), os demais estão em desenvolvimento.
+- [x] **Hardware físico:** placa Heltec WiFi LoRa 32 V3 (ESP32-S3) e cabo USB-C. Os demais componentes da Seção 3.1 (BNO085, KY-038, ADS1115, relé, LED RGB, buzzer, RTC + MicroSD, cooler) são necessários para a montagem completa da bancada; hoje o firmware já tem implementação própria para todos eles — BNO085, KY-038 (com ADS1115), LED RGB, buzzer, relé e RTC + MicroSD (ver Seção 3.2) — restando apenas a conectividade Wi-Fi/MQTT em desenvolvimento.
 - [x] **Software na máquina de desenvolvimento:** [ESP-IDF v5.5.5](https://docs.espressif.com/projects/esp-idf/en/v5.5.5/esp32s3/get-started/index.html) instalado (inclui o toolchain `xtensa-esp32s3`), Git. Opcional: VS Code + extensão Espressif IDF.
 - [x] **Contas/serviços externos:** conta no [Edge Impulse](https://edgeimpulse.com/) só é necessária caso o modelo precise ser retreinado/reexportado — o modelo já treinado vem versionado em `firmware/components/tflite-model/`, não é obrigatório recriá-lo para compilar o firmware.
 
@@ -139,7 +137,7 @@ cd tcc-monitoramento_preditivo_vibroacustico/firmware
 idf.py set-target esp32s3
 idf.py build
 ```
-O ESP-IDF Component Manager resolve automaticamente a dependência declarada em `firmware/main/idf_component.yml` (hoje, `rinku404/bno085`) a partir do `firmware/dependencies.lock`, sem passo manual adicional. As demais dependências listadas na Seção 3.2 como 🔜 (`ads111x`, `ds3231`, `i2cdev`, `esp-mqtt`, `esp_wifi`, `esp_vfs_fat`) ainda não estão declaradas no manifesto — serão adicionadas quando os componentes correspondentes (`sensor_ky038`, `storage_datalogger`, `connectivity_mqtt`) forem implementados.
+O ESP-IDF Component Manager resolve automaticamente as dependências declaradas em `firmware/main/idf_component.yml` (`rinku404/bno085`, `esp-idf-lib/ads111x`, `esp-idf-lib/i2cdev` e `esp-idf-lib/ds3231`) a partir do `firmware/dependencies.lock`, sem passo manual adicional. As únicas dependências ainda não declaradas no manifesto são as nativas de rede (`esp-mqtt`, `esp_wifi`) — serão adicionadas quando `connectivity_mqtt` for implementado.
 
 ### 5.3 Configuração de rede e credenciais
 
@@ -165,27 +163,34 @@ O modelo de classificação (Edge Impulse) já vem exportado e versionado em `fi
 
 ## 6. Instruções de Montagem (Hardware)
 
-`[Não disponível na PoC - Apenas na Entrega Final]`
-
 ### 6.1 Tabela de conexões (pinout)
 
-> Preenchida parcialmente apenas com os componentes já integrados ao firmware na PoC (ver Seção 3.2).
+> Todos os componentes de hardware da Seção 3.1 já têm implementação própria no firmware (ver Seção 3.2) — a tabela abaixo cobre o pinout completo.
 
 | Componente | Pino do componente | Pino do controlador (GPIO) | Observação |
 |---|---|---|---|
-| BNO085 | SDA | GPIO 6 | I2C, endereço `0x4A` |
+| BNO085 | SDA | GPIO 6 | I2C, endereço `0x4A` — barramento compartilhado com ADS1115 e DS3231 |
 | BNO085 | SCL | GPIO 7 | I2C, 400 kHz |
 | BNO085 | INT | GPIO 5 | Pinagem provisória de bancada — ver issue #15 |
 | BNO085 | RESET | GPIO 4 | Pinagem provisória de bancada — ver issue #15 |
-| Buzzer | sinal | GPIO 47 | Digital, ativo em nível alto |
-| LED RGB | R | GPIO 42 | Ativo em nível alto (catodo comum) |
-| LED RGB | G | GPIO 2 | Ativo em nível alto (catodo comum) |
-| LED RGB | B | GPIO 3 | Ativo em nível alto (catodo comum) |
-| KY-038, ADS1115, Relé, RTC + MicroSD | — | — | `[Não disponível na PoC - Apenas na Entrega Final]` — componentes ainda não implementados no firmware |
+| KY-038 | D0 (pico sonoro) | GPIO 3 | Digital, interrupção por borda de subida (ISR), com debounce de 50 ms |
+| ADS1115 | SDA | GPIO 6 | I2C, endereço `0x48` (`ADS111X_ADDR_GND`) — mesmo barramento do BNO085/DS3231 |
+| ADS1115 | SCL | GPIO 7 | I2C, 400 kHz — canal A0 lê o sinal fino (analógico) do KY-038 |
+| Buzzer | sinal | GPIO 42 | Digital, ativo em nível alto |
+| LED RGB | R | GPIO 47 | Ativo em nível alto (catodo comum) |
+| LED RGB | G | GPIO 48 | Ativo em nível alto (catodo comum) |
+| LED RGB | B | GPIO 26 | Ativo em nível alto (catodo comum) |
+| Relé (transistor 2N2222) | Base | GPIO 2 | Chaveia o circuito de 5V do ventilador (coletor/emissor) — não o motor diretamente |
+| RTC DS3231 | SDA | GPIO 6 | I2C, mesmo barramento compartilhado do BNO085/ADS1115 |
+| RTC DS3231 | SCL | GPIO 7 | I2C, 400 kHz |
+| MicroSD | CS | GPIO 21 | SPI dedicado (não compartilhado com o barramento I2C) |
+| MicroSD | SCK | GPIO 39 | SPI |
+| MicroSD | MOSI | GPIO 40 | SPI |
+| MicroSD | MISO | GPIO 41 | SPI |
 
 ### 6.2 Diagrama elétrico / foto da montagem
 
-`[Não disponível na PoC - Apenas na Entrega Final]`
+![Esquemático de conexões (parcial)](docs/Esquematico_Conexoes.png)
 
 ### 6.3 Cuidados de montagem
 
@@ -209,17 +214,17 @@ O modelo de classificação (Edge Impulse) já vem exportado e versionado em `fi
 │   │   ├── model-parameters/       (gerado pelo Edge Impulse; versionado para build reprodutível sem reexportar)
 │   │   ├── tflite-model/           (gerado pelo Edge Impulse; versionado para build reprodutível sem reexportar)
 │   │   ├── sensor_bno085/          (implementado)
-│   │   ├── sensor_ky038/           (.gitkeep — a implementar)
-│   │   ├── actuator_relay/         (.gitkeep — a implementar)
+│   │   ├── sensor_ky038/           (implementado)
+│   │   ├── actuator_relay/         (implementado)
 │   │   ├── actuator_buzzer/        (implementado)
 │   │   ├── actuator_led_rgb/       (implementado)
-│   │   ├── storage_datalogger/     (.gitkeep — a implementar)
+│   │   ├── storage_datalogger/     (implementado)
 │   │   └── connectivity_mqtt/      (.gitkeep — a implementar)
 │   └── main/
 │       ├── idf_component.yml       (declara as dependências gerenciadas — ver Seção 3.2)
-│       ├── main.c
-│       ├── task_aquisicao.c
-│       └── task_inferencia.cpp
+│       ├── main.c                  (hoje testa isoladamente o storage_datalogger — ver aviso na Seção 5.4)
+│       ├── task_aquisicao.c        (implementada, ainda não iniciada pelo app_main — ver Seção 5.4)
+│       └── task_inferencia.cpp     (implementada, ainda não iniciada pelo app_main — ver Seção 5.4)
 ├── dashboard/
 │   └── .gitkeep                    (painel Node-RED a ser adicionado — ver RF-09)
 └── docs/                           (artefatos entregues)
