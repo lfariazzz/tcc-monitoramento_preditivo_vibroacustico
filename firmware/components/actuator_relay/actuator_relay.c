@@ -7,6 +7,11 @@
 
 esp_err_t actuator_relay_init(void)
 {
+    // Define o nível antes de habilitar a saída, para que o pino já
+    // suba em nível alto assim que gpio_config() ligar o output_enable
+    // (evita passar por um pulso em nível baixo no meio do caminho).
+    gpio_set_level(RELAY_GPIO, 1);
+
     gpio_config_t cfg = {
         .pin_bit_mask = (1ULL << RELAY_GPIO),
         .mode = GPIO_MODE_OUTPUT,

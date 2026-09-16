@@ -1,16 +1,37 @@
 #include <stdio.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "connectivity_mqtt.h"
+#include "sensor_bno085.h"
+#include "sensor_ky038.h"
 
 void app_main(void)
 {
-    esp_err_t err = connectivity_mqtt_init();
-    printf("Init connectivity_mqtt: %s\n", esp_err_to_name(err));
+    esp_err_t err_ky  = sensor_ky038_init();  // primeiro: inicializa o i2cdev/barramento
+    esp_err_t err_bno = sensor_bno085_init(); // depois: reaproveita o barramento já criado
+
+    if (err_bno != ESP_OK || err_ky != ESP_OK) {
+        printf("Falha na inicializacao: bno=%s ky=%s\n",
+               esp_err_to_name(err_bno), esp_err_to_name(err_ky));
+        return;
+    }
+
+    printf("x,y,z,som,picos\n");  // cabecalho CSV
 
     for (;;) {
-        connectivity_mqtt_publicar_severidade("Teste");
-        printf("Tentativa de publicacao enviada\n");
-        vTaskDelay(pdMS_TO_TICKS(3000));
+        sensor_bno085_poll();
+
+        sensor_bno085_sample_t bno_amostra;
+        sensor_bno085_get_latest(&bno_amostra);
+
+        int16_t som_bruto = 0;
+        sensor_ky038_ler_som(&som_bruto);
+
+        uint32_t picos = sensor_ky038_pico_count_reset();
+
+        printf("%.4f,%.4f,%.4f,%d,%lu\n",
+               bno_amostra.x, bno_amostra.y, bno_amostra.z,
+               som_bruto, picos);
+
+        vTaskDelay(pdMS_TO_TICKS(10));  // 100Hz — RNF-01/02
     }
 }

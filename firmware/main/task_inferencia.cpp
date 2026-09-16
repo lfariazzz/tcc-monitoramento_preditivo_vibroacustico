@@ -46,11 +46,11 @@ extern "C" const janela_dados_t* task_aquisicao_get_janela_pronta(void);
 static int64_t s_inicio_severa_us = 0;
 static bool s_em_severa = false;
 
-// s_rele_acionado reflete o ESTADO FÍSICO real do relé — só vira true logo
-// após actuator_relay_on() ser chamado de fato, e só vira false logo após
-// actuator_relay_off() ser chamado de fato. Nunca é setado "antecipadamente"
-// só porque a severidade mudou de classe, para não dessincronizar do
-// hardware real.
+// s_rele_acionado reflete o ESTADO FÍSICO real do corte — só vira true logo
+// após actuator_relay_off() ser chamado de fato (energia cortada), e só vira
+// false logo após actuator_relay_on() ser chamado de fato (energia
+// restaurada). Nunca é setado "antecipadamente" só porque a severidade
+// mudou de classe, para não dessincronizar do hardware real.
 static bool s_rele_acionado = false;
 
 static int64_t s_inicio_beep_leve_us = 0;
@@ -70,7 +70,7 @@ static void avaliar_persistencia_severa(bool esta_severa)
         } else if (!s_rele_acionado) {
             int64_t duracao_ms = (agora_us - s_inicio_severa_us) / 1000;
             if (duracao_ms >= TEMPO_PERSISTENCIA_SEVERA_MS) {
-                actuator_relay_on();
+                actuator_relay_off();
                 s_rele_acionado = true;
             }
         }
@@ -79,7 +79,7 @@ static void avaliar_persistencia_severa(bool esta_severa)
         // NÃO mexe em s_rele_acionado aqui — o relé, se já tiver sido
         // cortado fisicamente, continua cortado até a lógica de
         // religamento automático (ver bloco "parado" em task_inferencia)
-        // confirmar estabilidade e chamar actuator_relay_off() de verdade.
+        // confirmar estabilidade e chamar actuator_relay_on() de verdade.
         s_em_severa = false;
     }
 }
@@ -161,7 +161,7 @@ void task_inferencia(void *pvParameters)
                 } else {
                     int64_t duracao_ms = (agora_us - s_inicio_parado_us) / 1000;
                     if (duracao_ms >= TEMPO_ESTABILIDADE_RELIGAR_MS) {
-                        actuator_relay_off();
+                        actuator_relay_on();
                         s_rele_acionado = false;
                         s_contando_estabilidade = false;
                         ESP_LOGI(TAG, "Relé religado após estabilidade confirmada");
