@@ -7,8 +7,9 @@ sdkconfig.old
 
 # Managed components installed by the component manager
 # (idf_component.yml stays tracked; the fetched sources don't)
+# dependencies.lock, por outro lado, FICA versionado — é o que garante
+# que quem clonar resolva exatamente as mesmas versões (ver README, Seção 5.2)
 managed_components/
-dependencies.lock
 
 # Editor / IDE
 .vscode/
@@ -16,3 +17,5 @@ dependencies.lock
 
 # OS cruft
 .DS_Store
+
+.vscode

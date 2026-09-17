@@ -6,13 +6,15 @@
 |---|---|---|---|
 | `main` | Só código em produção/release, com tag de versão (`v1.0.0`) | — | — |
 | `develop` | Branch de integração — features se juntam antes de virar release | `main` | `main` (via release) |
-| `feature/*` | Uma funcionalidade nova | `develop` | `develop` |
+| `feat/*` | Uma funcionalidade nova | `develop` | `develop` |
+| `fix/*` | Correção de bug fora de produção | `develop` | `develop` |
 | `release/*` | Preparação de versão (ajustes finais, changelog, bump de versão) | `develop` | `main` **e** `develop` |
 | `hotfix/*` | Correção urgente em produção | `main` | `main` **e** `develop` |
 
-Convenção de nomes:
+Convenção de nomes (mesmo prefixo do Conventional Commits, ver seção abaixo):
 ```
-feature/nome-curto-da-feature
+feat/nome-curto-da-feature
+fix/nome-curto-do-bug
 release/1.0.0
 hotfix/nome-do-bug
 ```
