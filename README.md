@@ -134,7 +134,15 @@ idf.py -p <PORTA> monitor    # acompanha a saída serial em tempo real
 ```
 > Linux: se a porta não aparecer ou der "Permission denied", adicione seu usuário ao grupo `dialout` (`sudo usermod -aG dialout $USER`, depois reabra a sessão). Windows: a porta aparece como `COMx` no Gerenciador de Dispositivos.
 
-### 5.4 Configuração adicional
+### 5.4 Resultado esperado (como confirmar que está funcionando)
+
+Com o cooler ligado e o sensor de vibração fixado nele, o `idf.py monitor` deve imprimir uma linha a cada nova janela classificada, no formato:
+```
+I (12345) task_inferencia: Classe: Normal (0.94)
+```
+A cada ~1s (janela de 100 amostras a 100Hz), a linha se repete com a classe vigente (`Normal`, `Anomalia Leve` ou `Anomalia Severa`) e a confiança do modelo. Fisicamente, o LED RGB acompanha essa classificação em tempo real — verde (normal), amarelo (leve, buzzer emite um beep curto) ou vermelho (severa, buzzer contínuo) — e, se a condição severa persistir por 5s seguidos, o relé desliga o cooler e a mensagem de corte aparece no log. Se o cooler for desligado, o log passa a mostrar `Motor parado (desvio abaixo do limiar)` e nenhuma inferência é executada nesse período.
+
+### 5.5 Configuração adicional
 
 O modelo de classificação (Edge Impulse) já vem exportado e versionado em `firmware/components/tflite-model/` e `firmware/components/model-parameters/` — não é necessário reexportá-lo para compilar e rodar o firmware atual. Reexportar só é preciso se o dataset de treinamento for atualizado; nesse caso, o novo export do Edge Impulse (formato "C++ library" para ESP-IDF) deve substituir o conteúdo dessas duas pastas.
 
