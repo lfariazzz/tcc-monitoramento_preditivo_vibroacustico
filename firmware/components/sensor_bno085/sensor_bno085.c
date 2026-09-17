@@ -36,7 +36,8 @@ esp_err_t sensor_bno085_init(void)
     // PRÉ-REQUISITO: algum dispositivo baseado em i2cdev (ex: sensor_ky038,
     // via ads111x) precisa ter sido inicializado ANTES desta chamada —
     // é o que cria o barramento físico que aqui só reaproveitamos.
-    // Ver main.c: sensor_ky038_init() deve vir antes de sensor_bno085_init().
+    // Ver task_aquisicao.c: sensor_ky038_init() deve vir antes de
+    // sensor_bno085_init().
     esp_err_t err = i2cdev_get_shared_handle(I2C_NUM_0, (void **)&s_bus);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Falha ao obter barramento I2C compartilhado (verifique "

@@ -1,8 +1,7 @@
-// main TEMPORÁRIA para validar o sistema completo (aquisição + inferência +
-// relé) rodando junto na placa, no arranjo de tasks em que ele deve operar
-// de fato (task_aquisicao produz janelas, task_inferencia consome e decide
-// severidade/corte do relé). Antes disso o app_main só fazia log CSV bruto
-// e nunca chegava a criar essas tasks nem o semáforo que as liga.
+// Ponto de entrada do firmware: cria o semáforo de sincronização e as duas
+// tasks do pipeline (task_aquisicao produz janelas de amostras; task_inferencia
+// consome cada janela pronta, roda a inferência e decide severidade/corte do
+// relé).
 #include <stdio.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"

@@ -4,7 +4,6 @@ extern "C" {
 #include "actuator_led_rgb.h"
 #include "actuator_buzzer.h"
 #include "actuator_relay.h"
-#include "connectivity_mqtt.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
@@ -134,7 +133,6 @@ void task_inferencia(void *pvParameters)
     actuator_buzzer_init();
     actuator_led_rgb_init();
     actuator_relay_init();
-    connectivity_mqtt_init();
 
     for (;;) {
         if (xSemaphoreTake(g_sem_janela_pronta, portMAX_DELAY) != pdTRUE) {
@@ -179,8 +177,9 @@ void task_inferencia(void *pvParameters)
         // quando "parado" for detectado de forma contínua de novo.
         s_contando_estabilidade = false;
 
-        // sensor_bno085_sample_t {x,y,z} é contíguo em memória — já é o
-        // formato plano [x0,y0,z0,x1,y1,z1,...] que o Edge Impulse espera.
+        // amostra_combinada_t {x,y,z,som,picos} é contíguo em memória — já é
+        // o formato plano [x0,y0,z0,som0,picos0,x1,y1,z1,som1,picos1,...]
+        // que o Edge Impulse espera (bate com RAW_SAMPLES_PER_FRAME=5).
         signal_t signal;
         numpy::signal_from_buffer(
             (float *)janela->amostras,
@@ -205,7 +204,11 @@ void task_inferencia(void *pvParameters)
 
         ESP_LOGI(TAG, "Classe: %s (%.2f)", melhor_label, melhor_valor);
 
-        // ⚠️ Nomes de label ainda não confirmados byte a byte — ver nota abaixo
+        // Labels conferidos byte a byte contra
+        // model-parameters/model_variables.h: "Normal", "Anomalia Leve",
+        // "Anomalia Severa". Qualquer label fora dessas duas primeiras
+        // checagens (inclusive "Anomalia Severa") cai no else como SEVERA —
+        // comportamento fail-safe intencional.
         led_severidade_t severidade;
 
         if (strcmp(melhor_label, "Normal") == 0) {
@@ -218,7 +221,6 @@ void task_inferencia(void *pvParameters)
 
         actuator_led_rgb_set(severidade);
         controlar_buzzer(severidade);
-        connectivity_mqtt_publicar_severidade(melhor_label);
 
         avaliar_persistencia_severa(severidade == LED_SEVERIDADE_SEVERA);
     }

@@ -1,37 +1,33 @@
-#include <stdio.h>
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "sensor_bno085.h"
-#include "sensor_ky038.h"
+#include "actuator_relay.h"
+#include "driver/gpio.h"
 
-void app_main(void)
+// Base do transistor 2N2222 — chaveia o circuito de 5V do ventilador
+// (coletor/emissor), não o próprio motor diretamente.
+#define RELAY_GPIO  2
+
+esp_err_t actuator_relay_init(void)
 {
-    esp_err_t err_ky  = sensor_ky038_init();  // primeiro: inicializa o i2cdev/barramento
-    esp_err_t err_bno = sensor_bno085_init(); // depois: reaproveita o barramento já criado
+    // Define o nível antes de habilitar a saída, para que o pino já
+    // suba em nível alto assim que gpio_config() ligar o output_enable
+    // (evita passar por um pulso em nível baixo no meio do caminho).
+    gpio_set_level(RELAY_GPIO, 1);
 
-    if (err_bno != ESP_OK || err_ky != ESP_OK) {
-        printf("Falha na inicializacao: bno=%s ky=%s\n",
-               esp_err_to_name(err_bno), esp_err_to_name(err_ky));
-        return;
-    }
+    gpio_config_t cfg = {
+        .pin_bit_mask = (1ULL << RELAY_GPIO),
+        .mode = GPIO_MODE_OUTPUT,
+        .pull_up_en = GPIO_PULLUP_DISABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type = GPIO_INTR_DISABLE,
+    };
+    return gpio_config(&cfg);
+}
 
-    printf("x,y,z,som,picos\n");  // cabecalho CSV
+void actuator_relay_on(void)
+{
+    gpio_set_level(RELAY_GPIO, 1);
+}
 
-    for (;;) {
-        sensor_bno085_poll();
-
-        sensor_bno085_sample_t bno_amostra;
-        sensor_bno085_get_latest(&bno_amostra);
-
-        int16_t som_bruto = 0;
-        sensor_ky038_ler_som(&som_bruto);
-
-        uint32_t picos = sensor_ky038_pico_count_reset();
-
-        printf("%.4f,%.4f,%.4f,%d,%lu\n",
-               bno_amostra.x, bno_amostra.y, bno_amostra.z,
-               som_bruto, picos);
-
-        vTaskDelay(pdMS_TO_TICKS(10));  // 100Hz — RNF-01/02
-    }
+void actuator_relay_off(void)
+{
+    gpio_set_level(RELAY_GPIO, 0);
 }
